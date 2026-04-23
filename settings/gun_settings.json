@@ -1,0 +1,9 @@
+{
+    "base_damage": 50,
+    "pistol": {
+        "cooldown": 500,
+        "damage_multiplier": 1.0,
+        "description": "Пистолет -\nпросто обычный\nпистолет,\nничего необычного",
+        "price": 0
+    }
+}
