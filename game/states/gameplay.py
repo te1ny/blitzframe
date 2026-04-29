@@ -20,6 +20,7 @@ class InGameStats:
 
 class Gameplay:
     state_name = 'gameplay'
+    music_state = 'gameplay'
 
     def __init__(self, game):
         self.game = game
@@ -47,13 +48,17 @@ class Gameplay:
     def starting_wave(self):
         self.game_stats.wave_active = True
 
-        wave_key = str(min(self.game_stats.wave, 5))
+        max_wave = max(int(k) for k in load_json(join('settings', 'waves.json')).keys())
+        wave_key = str(min(self.game_stats.wave, max_wave))
         wave_settings: dict = load_json(join('settings', 'waves.json'))[wave_key]
+
+        self.boss_wave = wave_settings.get('boss', False)
 
         enemies_dict = {
             NormalEnemy.name: NormalEnemy,
             FastEnemy.name: FastEnemy,
             HeavyEnemy.name: HeavyEnemy,
+            FirstBoss.name: FirstBoss,
         }
         wave_multipliers = wave_settings['enemies_multiplier']
 
@@ -61,19 +66,26 @@ class Gameplay:
         for enemy_name, enemy_num in wave_settings['enemies'].items():
             if enemy_name not in enemies_dict:
                 continue
+            enemy_cls = enemies_dict[enemy_name]
+            is_boss = enemy_cls.boss
             for _ in range(enemy_num):
+                def make_spawn(en=enemy_name, boss=is_boss):
+                    def spawn():
+                        pos = self._boss_spawn_pos() if boss else self._spawn_pos()
+                        enemies_dict[en](
+                            (self.game.all_sprites, self.game.enemy_sprites),
+                            pos,
+                            self.game.enemies_frames_dict[en],
+                            self.game.player,
+                            health_multiplier=wave_multipliers['health'],
+                            speed_multiplier=wave_multipliers['speed'],
+                            damage_multiplier=wave_multipliers['damage'],
+                        )
+                    return spawn
                 self.spawn_timers.append(Timer(
                     random.randint(500, self.game_stats.wave * 800),
                     False, True,
-                    lambda en=enemy_name: enemies_dict[en](
-                        (self.game.all_sprites, self.game.enemy_sprites),
-                        self._spawn_pos(),
-                        self.game.enemies_frames_dict[en],
-                        self.game.player,
-                        health_multiplier=wave_multipliers['health'],
-                        speed_multiplier=wave_multipliers['speed'],
-                        damage_multiplier=wave_multipliers['damage'],
-                    )
+                    make_spawn()
                 ))
 
     def _spawn_pos(self):
@@ -89,6 +101,19 @@ class Gameplay:
             return (player_pos[0] - half_w - margin, random.randint(player_pos[1] - half_h, player_pos[1] + half_h))
         return (player_pos[0] + half_w + margin, random.randint(player_pos[1] - half_h, player_pos[1] + half_h))
 
+    def _boss_spawn_pos(self):
+        player_pos = self.game.player.rect.center
+        side = random.choice(['top', 'bottom', 'left', 'right'])
+        margin = 300
+        half_w, half_h = WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2
+        if side == 'top':
+            return (player_pos[0], player_pos[1] - half_h - margin)
+        if side == 'bottom':
+            return (player_pos[0], player_pos[1] + half_h + margin)
+        if side == 'left':
+            return (player_pos[0] - half_w - margin, player_pos[1])
+        return (player_pos[0] + half_w + margin, player_pos[1])
+
     def ending_wave(self):
         self.game_stats.wave_active = False
         self.game_stats.wave += 1
@@ -102,6 +127,10 @@ class Gameplay:
                 for enemy in hits:
                     if enemy.collision_active:
                         enemy.take_damage(bullet.damage)
+
+        hits = pygame.sprite.spritecollide(self.game.player, self.game.enemies_bullet_sprites, True)
+        for bullet in hits:
+            self.game.player.take_damage(damage=bullet.damage)
 
         for enemy in self.game.enemy_sprites:
             if enemy.rect.colliderect(self.game.player.rect):
@@ -151,8 +180,16 @@ class Gameplay:
                 and self.game_stats.wave_active
                 and not self.game.enemy_sprites):
             self.ending_wave()
+    # Нужно для разработки (убийство всех врагов на волне и очистка их пуль)
+    def input(self):
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_k]:
+            for sprite in list(self.game.enemy_sprites):
+                sprite.kill()
+            self.game.enemies_bullet_sprites.empty()
 
     def update(self, dt):
+        self.input()
         self.game_stats.update()
         self.collision()
         self.check_player_alive()
@@ -174,6 +211,7 @@ class Gameplay:
 
 class GameOver:
     state_name = 'game_over'
+    music_state = 'gameplay'
 
     def __init__(self, game):
         self.game = game
