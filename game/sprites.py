@@ -87,6 +87,8 @@ class Enemy(AnimatedSprite):
         self.direction = pygame.Vector2()
         self.hitbox_rect = self.rect.copy()
 
+        self.speed_multiplier = speed_multiplier
+
         info = load_json(join('settings', 'enemy_settings.json'))[self.name]
         self.speed = info['speed'] * speed_multiplier
         self.max_health = self.health = info['health'] * health_multiplier
@@ -157,6 +159,102 @@ class HeavyEnemy(Enemy):
     name = 'heavy'
     def __init__(self, groups, pos, frames, player, health_multiplier=1, speed_multiplier=1, damage_multiplier=1):
         super().__init__(groups, pos, frames, player, health_multiplier, speed_multiplier, damage_multiplier)
+
+
+class FirstBoss(Enemy):
+    name = 'first_boss'
+    boss = True
+
+    def __init__(self, groups, pos, frames, player, health_multiplier=1, speed_multiplier=1, damage_multiplier=1):
+        super().__init__(groups, pos, frames, player, health_multiplier, speed_multiplier, damage_multiplier)
+        self.game = player.game
+        self.attack_timer = Timer(5000, True, True, self.attack)
+        self.bullet_surf = pygame.image.load(join('images', 'enemies', 'guns', 'bullet.png')).convert_alpha()
+        self.attack_timers_list = []
+
+    def attack(self):
+        attack_list = [
+            self.star_attack,
+            self.laser_attack,
+            self.triple_shot_attack,
+            self.wave_attack,
+            self.spiral_attack,
+        ]
+        self.attack_timers_list = []
+        number_of_attacks = 6
+        attacks_delay = 400
+        current_attack = random.choice(attack_list)
+        for i in range(1, number_of_attacks + 1):
+            self.attack_timers_list.append(Timer(attacks_delay * i, False, True, current_attack))
+
+    def spiral_attack(self):
+        num_bullets = 8
+        self.spiral_angle = getattr(self, 'spiral_angle', 0) + 10
+        for i in range(num_bullets):
+            angle = radians(self.spiral_angle + (360 / num_bullets) * i)
+            direction = pygame.Vector2(cos(angle), sin(angle))
+            Bullet(
+                (self.game.all_sprites, self.game.enemies_bullet_sprites),
+                self.rect.center, self.bullet_surf, direction,
+                self.damage, lifetime=6000, speed=int(250 * self.speed_multiplier)
+            )
+
+    def wave_attack(self):
+        bullets_per_ring = 12
+        for i in range(bullets_per_ring):
+            angle = radians((360 / bullets_per_ring) * i)
+            direction = pygame.Vector2(cos(angle), sin(angle))
+            Bullet(
+                (self.game.all_sprites, self.game.enemies_bullet_sprites),
+                self.rect.center, self.bullet_surf, direction,
+                self.damage, lifetime=7000, speed=int(190 * self.speed_multiplier)
+            )
+
+    def laser_attack(self):
+        direction = (pygame.Vector2(self.game.player.rect.center) - pygame.Vector2(self.rect.center)).normalize()
+        Bullet(
+            (self.game.all_sprites, self.game.enemies_bullet_sprites),
+            self.rect.center, self.bullet_surf, direction,
+            self.damage, lifetime=3000, speed=int(460 * self.speed_multiplier)
+        )
+
+    def triple_shot_attack(self):
+        direction = (pygame.Vector2(self.game.player.rect.center) - pygame.Vector2(self.rect.center)).normalize()
+        for a in [-15, 0, 15]:
+            rotated = direction.rotate(a)
+            Bullet(
+                (self.game.all_sprites, self.game.enemies_bullet_sprites),
+                self.rect.center, self.bullet_surf, rotated,
+                self.damage, lifetime=5000, speed=int(270 * self.speed_multiplier)
+            )
+
+    def star_attack(self):
+        for d in [(0, -1), (1, -1), (1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1)]:
+            direction = pygame.Vector2(*d).normalize()
+            Bullet(
+                (self.game.all_sprites, self.game.enemies_bullet_sprites),
+                self.rect.center, self.bullet_surf, direction,
+                self.damage, lifetime=10000, speed=int(300 * self.speed_multiplier)
+            )
+
+    def draw_health(self, surface, *args):
+        bar_width, bar_height = 500, 30
+        x = (WINDOW_WIDTH - bar_width) // 2
+        y = 20
+        health_ratio = max(self.health / self.max_health, 0)
+        current_width = int(bar_width * health_ratio)
+        pygame.draw.rect(surface, (60, 60, 60), (x, y, bar_width, bar_height), border_radius=8)
+        pygame.draw.rect(surface, (220, 30, 30), (x, y, current_width, bar_height), border_radius=8)
+        pygame.draw.rect(surface, (255, 255, 255), (x, y, bar_width, bar_height), 2, border_radius=8)
+        font = pygame.font.SysFont('monospace', 20, bold=True)
+        text = font.render('BOSS', True, (255, 255, 255))
+        surface.blit(text, text.get_rect(center=(WINDOW_WIDTH // 2, y + bar_height // 2)))
+
+    def update(self, dt):
+        super().update(dt)
+        self.attack_timer.update()
+        for timer in self.attack_timers_list:
+            timer.update()
 
 
 # ================== bullets & guns ====================

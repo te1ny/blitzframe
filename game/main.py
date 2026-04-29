@@ -3,6 +3,7 @@ import states.gameplay
 from groups import AllSprites
 from support import *
 from sprites import *
+from sound import Sound
 
 
 class Game:
@@ -13,13 +14,18 @@ class Game:
         self.clock = pygame.time.Clock()
         self.running = True
 
+        self.music_volume = 0.3
+
         self.reset_game()
+
+        self.sound = Sound(self)
 
     def reset_game(self):
         self.game_paused = False
         self.all_sprites = AllSprites()
         self.enemy_sprites = pygame.sprite.Group()
         self.bullet_sprites = pygame.sprite.Group()
+        self.enemies_bullet_sprites = pygame.sprite.Group()
 
         if hasattr(self, 'player'):
             delattr(self, 'player')
@@ -49,6 +55,10 @@ class Game:
             frames = folder_importer('images', 'enemies', enemy_type)
             self.enemies_frames_dict[enemy_type] = {k: scale_frame(v) for k, v in frames.items()}
 
+        # boss uses heavy sprite scaled up for visual distinction
+        boss_base = folder_importer('images', 'enemies', 'heavy')
+        self.enemies_frames_dict['first_boss'] = {k: scale_frame(v, scale=4) for k, v in boss_base.items()}
+
     def run(self):
         while self.running:
             dt = self.clock.tick(FRAMERATE) / 1000
@@ -65,6 +75,7 @@ class Game:
             if not self.game_paused:
                 self.all_sprites.update(dt)
             self.current_state.update(dt)
+            self.sound.update(dt)
 
             self.display_surface.fill((30, 30, 30))
             self.current_state.draw()
