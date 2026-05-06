@@ -15,9 +15,9 @@ class Game:
         self.running = True
 
         self.music_volume = 0.3
+        self.sounds_volume = 0.3
 
         self.reset_game()
-
         self.sound = Sound(self)
 
     def reset_game(self):
@@ -30,10 +30,14 @@ class Game:
         if hasattr(self, 'player'):
             delattr(self, 'player')
 
+        if hasattr(self, 'sound'):
+            self.sound.prev_state = None
+
         self.load_assets()
 
         self.states = {
             'gameplay': states.gameplay.Gameplay(self),
+            'shop':     states.gameplay.Shop(self),
             'game_over': states.gameplay.GameOver(self),
         }
 
@@ -43,6 +47,10 @@ class Game:
     def change_state(self, new_state: str, animation=False):
         self.current_state = self.states[new_state]
         self.current_state.on_enter()
+
+    def play_sound(self, name):
+        if hasattr(self, 'sound') and name in self.sound.sounds:
+            self.sound.sounds[name].play()
 
     def load_assets(self):
         def scale_frame(surf, scale=2):
@@ -55,7 +63,7 @@ class Game:
             frames = folder_importer('images', 'enemies', enemy_type)
             self.enemies_frames_dict[enemy_type] = {k: scale_frame(v) for k, v in frames.items()}
 
-        # boss uses heavy sprite scaled up for visual distinction
+        # спрайт босса — heavy ×4, пока нет отдельных кадров
         boss_base = folder_importer('images', 'enemies', 'heavy')
         self.enemies_frames_dict['first_boss'] = {k: scale_frame(v, scale=4) for k, v in boss_base.items()}
 

@@ -42,12 +42,23 @@ class Player(pygame.sprite.Sprite):
         self.player_alive = True
         self.damage_delay_timer = Timer(1000, False, False)
 
+        # шаги
+        self.step_cooldown = False
+        def _step_reset(): self.step_cooldown = False
+        self.step_timer = Timer(400, False, False, _step_reset)
+
     def input(self):
         keys = pygame.key.get_pressed()
         self.direction.x = int(keys[pygame.K_d]) - int(keys[pygame.K_a])
         self.direction.y = int(keys[pygame.K_s]) - int(keys[pygame.K_w])
         if self.direction.length_squared() > 0:
             self.direction = self.direction.normalize()
+
+        if (not self.step_cooldown and self.direction.length_squared() > 0
+                and hasattr(self.game, 'sound') and self.game.sound.step_sounds):
+            random.choice(self.game.sound.step_sounds).play()
+            self.step_cooldown = True
+            self.step_timer.activate()
 
     def move(self, dt):
         self.hitbox_rect.x += self.direction.x * self.speed * dt
@@ -73,6 +84,7 @@ class Player(pygame.sprite.Sprite):
             self.input()
             self.move(dt)
             self.damage_delay_timer.update()
+            self.step_timer.update()
 
 
 # =============== enemies ====================
@@ -278,13 +290,12 @@ class Gun(pygame.sprite.Sprite):
         self.player = player
         self.player_direction = pygame.Vector2(1, 0)
 
-        gun_surf = pygame.Surface((16, 6), pygame.SRCALPHA)
-        gun_surf.fill((200, 200, 50))
-        self.gun_surf = gun_surf
-
-        bullet_surf = pygame.Surface((6, 6))
-        bullet_surf.fill((255, 220, 0))
-        self.bullet_surf = bullet_surf
+        self.gun_surf = self.load_surf()
+        self.gun_surf = pygame.transform.smoothscale(
+            self.gun_surf,
+            (int(self.gun_surf.get_width() * 0.7), int(self.gun_surf.get_height() * 0.7))
+        )
+        self.bullet_surf = pygame.image.load(join('images', 'enemies', 'guns', 'bullet.png')).convert_alpha()
 
         super().__init__(self.all_sprites)
         self.image = self.gun_surf
@@ -294,6 +305,11 @@ class Gun(pygame.sprite.Sprite):
         self.base_damage = info['base_damage']
         self.damage = self.base_damage * info[self.gun_name]['damage_multiplier']
         self.cooldown = info[self.gun_name]['cooldown']
+
+    def load_surf(self):
+        surf = pygame.Surface((16, 6), pygame.SRCALPHA)
+        surf.fill((200, 200, 50))
+        return surf
 
     def get_direction(self):
         mouse_pos = pygame.Vector2(pygame.mouse.get_pos())
@@ -317,6 +333,8 @@ class Gun(pygame.sprite.Sprite):
             self.create_bulet()
 
     def update(self, _):
+        if hasattr(self.player.game, 'game_stats'):
+            self.base_damage = self.player.game.game_stats.damage_upgrade
         self.get_direction()
         self.rotate_gun()
         self.input()
@@ -329,8 +347,12 @@ class Pistol(Gun):
         super().__init__(groups, player)
         self.cooldown_timer = Timer(self.cooldown)
 
+    def load_surf(self):
+        return pygame.image.load(join('images', 'enemies', 'guns', 'pistol.png')).convert_alpha()
+
     def create_bulet(self):
         if not self.cooldown_timer:
+            self.player.game.play_sound('pistol_shot')
             Bullet(
                 (self.all_sprites, self.bullet_sprites),
                 self.rect.center,
