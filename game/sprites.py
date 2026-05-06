@@ -181,7 +181,7 @@ class FirstBoss(Enemy):
         super().__init__(groups, pos, frames, player, health_multiplier, speed_multiplier, damage_multiplier)
         self.game = player.game
         self.attack_timer = Timer(5000, True, True, self.attack)
-        self.bullet_surf = pygame.image.load(join('images', 'enemies', 'guns', 'bullet.png')).convert_alpha()
+        self.bullet_surf = pygame.image.load(join('images', 'guns', 'bullet.png')).convert_alpha()
         self.attack_timers_list = []
 
     def attack(self):
@@ -295,7 +295,7 @@ class Gun(pygame.sprite.Sprite):
             self.gun_surf,
             (int(self.gun_surf.get_width() * 0.7), int(self.gun_surf.get_height() * 0.7))
         )
-        self.bullet_surf = pygame.image.load(join('images', 'enemies', 'guns', 'bullet.png')).convert_alpha()
+        self.bullet_surf = pygame.image.load(join('images', 'guns', 'bullet.png')).convert_alpha()
 
         super().__init__(self.all_sprites)
         self.image = self.gun_surf
@@ -348,7 +348,7 @@ class Pistol(Gun):
         self.cooldown_timer = Timer(self.cooldown)
 
     def load_surf(self):
-        return pygame.image.load(join('images', 'enemies', 'guns', 'pistol.png')).convert_alpha()
+        return pygame.image.load(join('images', 'guns', 'pistol.png')).convert_alpha()
 
     def create_bulet(self):
         if not self.cooldown_timer:
