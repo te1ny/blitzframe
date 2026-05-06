@@ -41,6 +41,20 @@ def audio_importer(*path):
     return audio_dict
 
 
+def sound_importer(*path):
+    """Загружает звуки только из верхнего уровня директории (нерекурсивно)."""
+    import os
+    result = {}
+    dir_path = join(*path)
+    if os.path.exists(dir_path):
+        for file_name in os.listdir(dir_path):
+            full = join(dir_path, file_name)
+            if os.path.isfile(full):
+                name = file_name.split('.')[0]
+                result[name] = pygame.mixer.Sound(full)
+    return result
+
+
 def folder_importer(*path):
     surfs = {}
     for folder_path, _, file_names in walk(join(*path)):
