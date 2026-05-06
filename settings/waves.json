@@ -113,5 +113,231 @@
       "damage": 1.5,
       "health": 1.6
     }
+  },
+  "11": {
+    "enemies": {
+      "normal": 21,
+      "fast": 19,
+      "heavy": 5
+    },
+    "enemies_multiplier": {
+      "speed": 1.55,
+      "damage": 1.55,
+      "health": 1.65
+    }
+  },
+  "12": {
+    "enemies": {
+      "normal": 23,
+      "fast": 21,
+      "heavy": 5
+    },
+    "enemies_multiplier": {
+      "speed": 1.6,
+      "damage": 1.6,
+      "health": 1.7
+    }
+  },
+  "13": {
+    "enemies": {
+      "normal": 25,
+      "fast": 23,
+      "heavy": 6
+    },
+    "enemies_multiplier": {
+      "speed": 1.65,
+      "damage": 1.65,
+      "health": 1.75
+    }
+  },
+  "14": {
+    "enemies": {
+      "normal": 27,
+      "fast": 25,
+      "heavy": 6
+    },
+    "enemies_multiplier": {
+      "speed": 1.7,
+      "damage": 1.7,
+      "health": 1.8
+    }
+  },
+  "15": {
+    "boss": true,
+    "enemies": {
+      "first_boss": 1
+    },
+    "enemies_multiplier": {
+      "speed": 1.75,
+      "damage": 1.75,
+      "health": 1.85
+    }
+  },
+  "16": {
+    "enemies": {
+      "normal": 31,
+      "fast": 29,
+      "heavy": 7
+    },
+    "enemies_multiplier": {
+      "speed": 1.8,
+      "damage": 1.8,
+      "health": 1.9
+    }
+  },
+  "17": {
+    "enemies": {
+      "normal": 33,
+      "fast": 31,
+      "heavy": 8
+    },
+    "enemies_multiplier": {
+      "speed": 1.85,
+      "damage": 1.85,
+      "health": 1.95
+    }
+  },
+  "18": {
+    "enemies": {
+      "normal": 35,
+      "fast": 33,
+      "heavy": 8
+    },
+    "enemies_multiplier": {
+      "speed": 1.9,
+      "damage": 1.9,
+      "health": 2.0
+    }
+  },
+  "19": {
+    "enemies": {
+      "normal": 37,
+      "fast": 35,
+      "heavy": 9
+    },
+    "enemies_multiplier": {
+      "speed": 1.95,
+      "damage": 1.95,
+      "health": 2.05
+    }
+  },
+  "20": {
+    "boss": true,
+    "enemies": {
+      "first_boss": 1
+    },
+    "enemies_multiplier": {
+      "speed": 2.0,
+      "damage": 2.0,
+      "health": 2.1
+    }
+  },
+  "21": {
+    "enemies": {
+      "normal": 41,
+      "fast": 39,
+      "heavy": 10
+    },
+    "enemies_multiplier": {
+      "speed": 2.05,
+      "damage": 2.05,
+      "health": 2.15
+    }
+  },
+  "22": {
+    "enemies": {
+      "normal": 43,
+      "fast": 41,
+      "heavy": 10
+    },
+    "enemies_multiplier": {
+      "speed": 2.1,
+      "damage": 2.1,
+      "health": 2.2
+    }
+  },
+  "23": {
+    "enemies": {
+      "normal": 45,
+      "fast": 43,
+      "heavy": 11
+    },
+    "enemies_multiplier": {
+      "speed": 2.15,
+      "damage": 2.15,
+      "health": 2.25
+    }
+  },
+  "24": {
+    "enemies": {
+      "normal": 47,
+      "fast": 45,
+      "heavy": 11
+    },
+    "enemies_multiplier": {
+      "speed": 2.2,
+      "damage": 2.2,
+      "health": 2.3
+    }
+  },
+  "25": {
+    "enemies": {
+      "normal": 49,
+      "fast": 47,
+      "heavy": 12
+    },
+    "enemies_multiplier": {
+      "speed": 2.25,
+      "damage": 2.25,
+      "health": 2.35
+    }
+  },
+  "26": {
+    "enemies": {
+      "normal": 51,
+      "fast": 49,
+      "heavy": 12
+    },
+    "enemies_multiplier": {
+      "speed": 2.3,
+      "damage": 2.3,
+      "health": 2.4
+    }
+  },
+  "27": {
+    "enemies": {
+      "normal": 53,
+      "fast": 51,
+      "heavy": 13
+    },
+    "enemies_multiplier": {
+      "speed": 2.35,
+      "damage": 2.35,
+      "health": 2.45
+    }
+  },
+  "28": {
+    "enemies": {
+      "normal": 55,
+      "fast": 53,
+      "heavy": 13
+    },
+    "enemies_multiplier": {
+      "speed": 2.4,
+      "damage": 2.4,
+      "health": 2.5
+    }
+  },
+  "29": {
+    "enemies": {
+      "normal": 57,
+      "fast": 55,
+      "heavy": 14
+    },
+    "enemies_multiplier": {
+      "speed": 2.45,
+      "damage": 2.45,
+      "health": 2.55
+    }
   }
 }
