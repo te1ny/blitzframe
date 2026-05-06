@@ -63,9 +63,8 @@ class Game:
             frames = folder_importer('images', 'enemies', enemy_type)
             self.enemies_frames_dict[enemy_type] = {k: scale_frame(v) for k, v in frames.items()}
 
-        # спрайт босса — heavy ×4, пока нет отдельных кадров
-        boss_base = folder_importer('images', 'enemies', 'heavy')
-        self.enemies_frames_dict['first_boss'] = {k: scale_frame(v, scale=4) for k, v in boss_base.items()}
+        boss_frames = folder_importer('images', 'enemies', 'first_boss')
+        self.enemies_frames_dict['first_boss'] = {k: scale_frame(v, scale=2.0) for k, v in boss_frames.items()}
 
     def run(self):
         while self.running:
