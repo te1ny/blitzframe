@@ -1,5 +1,7 @@
 from settings import *
 import states.gameplay
+import states.menu
+from states.menu import Background
 from groups import AllSprites
 from support import *
 from sprites import *
@@ -17,12 +19,17 @@ class Game:
         self.music_volume = 0.3
         self.sounds_volume = 0.3
 
+        create_score_json()
+
+        self.background = Background((WINDOW_WIDTH, WINDOW_HEIGHT))
+
         self.reset_game()
         self.sound = Sound(self)
 
     def reset_game(self):
         self.game_paused = False
         self.all_sprites = AllSprites()
+        self.buttons_sprites = pygame.sprite.Group()
         self.enemy_sprites = pygame.sprite.Group()
         self.bullet_sprites = pygame.sprite.Group()
         self.enemies_bullet_sprites = pygame.sprite.Group()
@@ -36,17 +43,29 @@ class Game:
         self.load_assets()
 
         self.states = {
-            'gameplay': states.gameplay.Gameplay(self),
-            'shop':     states.gameplay.Shop(self),
-            'game_over': states.gameplay.GameOver(self),
+            'main_menu':  states.menu.Menu(self),
+            'settings':   states.menu.Settings(self),
+            'gameplay':   states.gameplay.Gameplay(self),
+            'shop':       states.gameplay.Shop(self),
+            'game_over':  states.gameplay.GameOver(self),
         }
 
-        self.current_state = self.states['gameplay']
+        self.current_state = self.states['main_menu']
         self.current_state.on_enter()
 
-    def change_state(self, new_state: str, animation=False):
-        self.current_state = self.states[new_state]
-        self.current_state.on_enter()
+    def change_state(self, new_state: str, animation=True):
+        def state_func():
+            self.buttons_sprites.empty()
+            self.current_state = self.states[new_state]
+            self.current_state.on_enter()
+        if animation:
+            transition_effect(
+                surface=self.display_surface,
+                callback=state_func,
+                draw_callback=lambda: self.current_state.draw()
+            )
+        else:
+            state_func()
 
     def play_sound(self, name):
         if hasattr(self, 'sound') and name in self.sound.sounds:
@@ -58,13 +77,31 @@ class Game:
                 surf, (int(surf.get_width() * scale), int(surf.get_height() * scale))
             )
 
+        # player frames — 8 directions, list of surfaces sorted by frame index
+        directions = ['down', 'left_down', 'left', 'left_up', 'up', 'right_up', 'right', 'right_down']
+        self.player_frames = {}
+        for direction in directions:
+            frames_dict = folder_importer('images', 'player', direction)
+            frames_list = [surf for _, surf in sorted(frames_dict.items(), key=lambda item: int(item[0]))]
+            self.player_frames[direction] = [scale_frame(surf, scale=3) for surf in frames_list]
+
+        # enemy frames
         self.enemies_frames_dict = {}
         for enemy_type in ['normal', 'fast', 'heavy']:
             frames = folder_importer('images', 'enemies', enemy_type)
             self.enemies_frames_dict[enemy_type] = {k: scale_frame(v) for k, v in frames.items()}
 
         boss_frames = folder_importer('images', 'enemies', 'first_boss')
-        self.enemies_frames_dict['first_boss'] = {k: scale_frame(v, scale=2.0) for k, v in boss_frames.items()}
+        self.enemies_frames_dict['first_boss'] = {k: scale_frame(v, scale=0.8) for k, v in boss_frames.items()}
+
+        # button images
+        self.buttons_frames = folder_importer('images', 'buttons')
+
+        # fonts (SysFont — no TTF file available)
+        self.m_font  = pygame.font.SysFont('monospace', 40)
+        self.l_font  = pygame.font.SysFont('monospace', 80)
+        self.s_font  = pygame.font.SysFont('monospace', 30)
+        self.xs_font = pygame.font.SysFont('monospace', 24)
 
     def run(self):
         while self.running:
@@ -74,8 +111,6 @@ class Game:
                 if event.type == pygame.QUIT:
                     self.running = False
                 if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_ESCAPE:
-                        self.running = False
                     if event.key == pygame.K_r:
                         self.reset_game()
 

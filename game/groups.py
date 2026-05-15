@@ -30,7 +30,7 @@ class AllSprites(pygame.sprite.Group):
         else:
             self.shake_offset = pygame.Vector2()
 
-        objects_sprites = sorted(self.sprites(), key=lambda x: x.rect.centery)
+        objects_sprites = sorted(self.sprites(), key=lambda x: (x.rect.centery, getattr(x, 'z_index', 0)))
         for sprite in objects_sprites:
             self.display_surface.blit(sprite.image, sprite.rect.topleft + self.offset + self.shake_offset)
             if hasattr(sprite, 'draw_health'):

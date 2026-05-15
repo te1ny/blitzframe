@@ -1,5 +1,7 @@
 from settings import *
 import json
+import os
+import time
 
 
 class Timer:
@@ -71,3 +73,55 @@ def load_json(filepath) -> dict:
 
 def calculate_total_score(kills, waves):
     return kills * 2 + waves * 10
+
+
+def write_json(filepath, data):
+    with open(filepath, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=4)
+
+
+def create_score_json():
+    path = join('settings', 'score.json')
+    if not os.path.exists(path):
+        write_json(path, {})
+
+
+def write_score(kills, waves, total):
+    path = join('settings', 'score.json')
+    stats = {'kills': kills, 'waves': waves, 'total': total}
+    score = load_json(path)
+    if score:
+        best_scores = list(score.values())
+        best_scores.append(stats)
+        best_scores.sort(reverse=True, key=lambda x: x['total'])
+        if len(best_scores) > 10:
+            del best_scores[-1]
+    else:
+        best_scores = [stats]
+    write_json(path, {key: value for key, value in enumerate(best_scores, start=1)})
+
+
+def transition_effect(surface, callback, fade_speed=20, hold_time=0.3, draw_callback=None):
+    clock = pygame.time.Clock()
+    fade_overlay = pygame.Surface(surface.get_size()).convert_alpha()
+    for alpha in range(0, 256, fade_speed):
+        if draw_callback:
+            draw_callback()
+        fade_overlay.fill((0, 0, 0, alpha))
+        surface.blit(fade_overlay, (0, 0))
+        pygame.display.update()
+        clock.tick(60)
+    callback()
+    fade_overlay.fill((0, 0, 0, 255))
+    surface.blit(fade_overlay, (0, 0))
+    pygame.display.update()
+    start = time.time()
+    while time.time() - start < hold_time:
+        clock.tick(60)
+    for alpha in range(255, -1, -fade_speed):
+        if draw_callback:
+            draw_callback()
+        fade_overlay.fill((0, 0, 0, alpha))
+        surface.blit(fade_overlay, (0, 0))
+        pygame.display.update()
+        clock.tick(60)

@@ -1,6 +1,7 @@
 from settings import *
 from sprites import *
 from support import *
+from ui import Button
 
 
 class InGameStats:
@@ -39,6 +40,7 @@ class Gameplay:
             self.game.player = Player(
                 self.game.all_sprites,
                 (WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2),
+                self.game.player_frames,
                 self.game
             )
             self.game.game_stats = self.game_stats = InGameStats(self.game)
@@ -364,6 +366,14 @@ class GameOver:
 
     def on_enter(self):
         self.game.game_paused = True
+        stats = self.game.game_stats
+        total = calculate_total_score(stats.kills, stats.wave)
+        write_score(stats.kills, stats.wave, total)
+        self.menu_button = Button(
+            groups=self.game.buttons_sprites,
+            pos=(WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2 + 120),
+            image=self.game.buttons_frames['menu']
+        )
 
     def draw(self):
         self.game.all_sprites.draw(self.game.player.rect.center)
@@ -380,11 +390,16 @@ class GameOver:
         stats = self.game.game_stats
 
         for surf, pos in [
-            (big_font.render('GAME OVER', True, (220, 40, 40)),         (cx, cy - 70)),
-            (font.render('Нажмите R для рестарта', True, (255,255,255)), (cx, cy + 10)),
-            (font.render(f'Убито: {stats.kills}   Волна: {stats.wave}', True, (200,200,200)), (cx, cy + 55)),
+            (big_font.render('GAME OVER', True, (220, 40, 40)),          (cx, cy - 70)),
+            (font.render('Нажмите R для рестарта', True, (255, 255, 255)), (cx, cy + 10)),
+            (font.render(f'Убито: {stats.kills}   Волна: {stats.wave}', True, (200, 200, 200)), (cx, cy + 55)),
         ]:
             surface.blit(surf, surf.get_rect(center=pos))
 
+        self.game.buttons_sprites.draw(surface)
+
     def update(self, dt):
-        pass
+        self.game.buttons_sprites.update(dt)
+        if hasattr(self, 'menu_button') and self.menu_button.is_clicked():
+            self.game.reset_game()
+            return

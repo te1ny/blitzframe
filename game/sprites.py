@@ -25,27 +25,61 @@ class AnimatedSprite(Sprite):
 # =============== player =====================
 
 class Player(pygame.sprite.Sprite):
-    def __init__(self, groups, pos, game):
+    def __init__(self, groups, pos, frames, game):
         super().__init__(groups)
         self.game = game
-        surf = pygame.Surface((PLAYER_SIZE, PLAYER_SIZE))
-        surf.fill((220, 40, 40))
-        self.image = surf
+        self.frames = frames
+        self.state = 'down'
+        self.last_state = 'down'
+        self.frame_index = 1
+
+        self.death_frame = pygame.image.load(join('images', 'player', 'death.png')).convert_alpha()
+        self.death_frame = pygame.transform.scale(
+            self.death_frame,
+            (int(self.death_frame.get_width() * 3), int(self.death_frame.get_height() * 3))
+        )
+
+        self.image = self.frames[self.state][self.frame_index]
         self.rect = self.image.get_rect(center=pos)
-        self.hitbox_rect = self.rect.copy()
+        self.hitbox_rect = self.rect.inflate(-30, -50)
 
         self.direction = pygame.Vector2()
         self.speed = 150
-        self.state = 'down'
 
         self.health = self.max_health = 100
         self.player_alive = True
         self.damage_delay_timer = Timer(1000, False, False)
 
-        # шаги
         self.step_cooldown = False
         def _step_reset(): self.step_cooldown = False
         self.step_timer = Timer(400, False, False, _step_reset)
+
+    def get_state(self):
+        x, y = self.direction.x, self.direction.y
+        if x == 0 and y == 0:
+            return self.last_state
+        if x > 0 and y < 0: return 'right_up'
+        if x > 0 and y > 0: return 'right_down'
+        if x < 0 and y < 0: return 'left_up'
+        if x < 0 and y > 0: return 'left_down'
+        if x > 0: return 'right'
+        if x < 0: return 'left'
+        if y > 0: return 'down'
+        if y < 0: return 'up'
+        return self.last_state
+
+    def animate(self, dt):
+        state = self.get_state()
+        moving = self.direction.length_squared() > 0
+        if moving:
+            self.frame_index += 10 * dt
+            self.last_state = state
+        else:
+            self.frame_index = 1
+            state = self.last_state
+        frame_list = self.frames[state]
+        self.image = frame_list[int(self.frame_index) % len(frame_list)]
+        self.state = state
 
     def input(self):
         keys = pygame.key.get_pressed()
@@ -75,14 +109,13 @@ class Player(pygame.sprite.Sprite):
 
     def death(self):
         self.player_alive = False
-        surf = pygame.Surface((PLAYER_SIZE, PLAYER_SIZE))
-        surf.fill((80, 80, 80))
-        self.image = surf
+        self.image = self.death_frame
 
     def update(self, dt):
         if self.player_alive:
             self.input()
             self.move(dt)
+            self.animate(dt)
             self.damage_delay_timer.update()
             self.step_timer.update()
 
@@ -298,6 +331,7 @@ class Gun(pygame.sprite.Sprite):
         self.bullet_surf = pygame.image.load(join('images', 'guns', 'bullet.png')).convert_alpha()
 
         super().__init__(self.all_sprites)
+        self.z_index = 1
         self.image = self.gun_surf
         self.rect = self.image.get_rect(center=self.player.rect.center)
 
