@@ -9,14 +9,14 @@ class Sound:
         self.sounds = sound_importer('sounds')        # pistol_shot, etc. (только верхний уровень)
         self.step_sounds = list(audio_importer(join('sounds', 'steps')).values())
         self.prev_state = None
-        self.state = 'gameplay'
+        self.state = 'main_menu'
         self.current_music = None
 
     def play_music(self):
         if self.state != self.prev_state:
             if self.current_music:
                 self.current_music.fadeout(1000)
-            music_map = {'gameplay': 'gameplay', 'shop': 'shop'}
+            music_map = {'gameplay': 'gameplay', 'shop': 'shop', 'main_menu': 'menu', 'settings': 'menu'}
             key = music_map.get(self.state)
             if key and key in self.music:
                 self.current_music = self.music[key]
