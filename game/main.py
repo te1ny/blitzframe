@@ -34,6 +34,8 @@ class Game:
         self.bullet_sprites = pygame.sprite.Group()
         self.enemies_bullet_sprites = pygame.sprite.Group()
 
+        self.available_weapons = {'pistol': Pistol}
+
         if hasattr(self, 'player'):
             delattr(self, 'player')
 
@@ -52,6 +54,15 @@ class Game:
 
         self.current_state = self.states['main_menu']
         self.current_state.on_enter()
+
+    def change_gun(self, gun, sound=True):
+        if gun in self.available_weapons:
+            self.current_gun.kill()
+            self.current_gun = self.available_weapons[gun](
+                (self.all_sprites, self.bullet_sprites), self.player
+            )
+            if sound:
+                self.play_sound('gun_swap')
 
     def change_state(self, new_state: str, animation=True):
         def state_func():
@@ -77,7 +88,7 @@ class Game:
                 surf, (int(surf.get_width() * scale), int(surf.get_height() * scale))
             )
 
-        # player frames — 8 directions, list of surfaces sorted by frame index
+        # player frames — 8 directions, sorted list of surfaces
         directions = ['down', 'left_down', 'left', 'left_up', 'up', 'right_up', 'right', 'right_down']
         self.player_frames = {}
         for direction in directions:
@@ -94,14 +105,52 @@ class Game:
         boss_frames = folder_importer('images', 'enemies', 'first_boss')
         self.enemies_frames_dict['first_boss'] = {k: scale_frame(v, scale=0.8) for k, v in boss_frames.items()}
 
-        # button images
+        # real button images
         self.buttons_frames = folder_importer('images', 'buttons')
+
+        # placeholder button images for shop (generated programmatically)
+        self._add_placeholder_buttons()
 
         # fonts (SysFont — no TTF file available)
         self.m_font  = pygame.font.SysFont('monospace', 40)
         self.l_font  = pygame.font.SysFont('monospace', 80)
         self.s_font  = pygame.font.SysFont('monospace', 30)
         self.xs_font = pygame.font.SysFont('monospace', 24)
+
+    def _add_placeholder_buttons(self):
+        font_sm = pygame.font.SysFont('monospace', 17)
+        font_md = pygame.font.SysFont('monospace', 20)
+
+        def make(text, color, size=(210, 76), font=None):
+            f = font or font_sm
+            surf = pygame.Surface(size, pygame.SRCALPHA)
+            pygame.draw.rect(surf, (*color, 210), surf.get_rect(), border_radius=10)
+            pygame.draw.rect(surf, (180, 180, 180, 120), surf.get_rect(), 1, border_radius=10)
+            lines = text.split('\n')
+            lh = f.get_height()
+            total_h = lh * len(lines)
+            start_y = (size[1] - total_h) // 2
+            for i, line in enumerate(lines):
+                txt = f.render(line, True, (240, 240, 240))
+                surf.blit(txt, txt.get_rect(centerx=size[0] // 2, top=start_y + i * lh))
+            return surf
+
+        gun_labels = {
+            'pistol':      'Пистолет',
+            'shotgun':     'Дробовик',
+            'sniper':      'Снайперка',
+            'machine-gun': 'Автомат',
+        }
+        for gn, label in gun_labels.items():
+            self.buttons_frames[f'open_{gn}']    = make(label,        (35, 80, 50))
+            self.buttons_frames[f'locked_{gn}']  = make(f'[?] {label}', (55, 55, 55))
+            self.buttons_frames[f'choosen_{gn}'] = make(label,        (140, 110, 15))
+
+        self.buttons_frames['heal']             = make('Лечение\nполностью', (130, 35, 35))
+        self.buttons_frames['health_upgrade']   = make('HP +',        (35, 110, 75), font=font_md)
+        self.buttons_frames['damage_upgrade']   = make('Урон +',      (160, 75, 25), font=font_md)
+        self.buttons_frames['speed_upgrade']    = make('Скорость +',  (25, 75, 155), font=font_md)
+        self.buttons_frames['start_wave']       = make('Далее\n--->',  (20, 115, 55))
 
     def run(self):
         while self.running:
