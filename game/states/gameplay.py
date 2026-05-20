@@ -1,22 +1,55 @@
 from settings import *
 from sprites import *
 from support import *
-from ui import Button
+from ui import Button, draw_text_window
 
 
 class InGameStats:
     def __init__(self, game):
         self.game = game
+        self.money = 0
         self.wave = 1
         self.kills = 0
-        self.money = 0
         self.prev_enemies_counter = self.enemies_counter = 0
         self.wave_active = False
 
-        # отслеживание уровней апгрейдов
-        self.health_upgrade = 100
-        self.damage_upgrade = load_json(join('settings', 'gun_settings.json'))['base_damage']
-        self.speed_upgrade = 150
+        self.heal_price = 30
+
+        self.health_upgrade       = 100
+        self.health_upgrade_step  = 20
+        self.health_level         = 1
+        self.health_upgrade_price = 30
+        self.health_price_step    = 10
+
+        self.damage_upgrade       = load_json(join('settings', 'gun_settings.json'))['base_damage']
+        self.damage_upgrade_step  = 4
+        self.damage_level         = 1
+        self.damage_upgrade_price = 40
+        self.damage_price_step    = 15
+
+        self.speed_upgrade        = 150
+        self.speed_upgrade_step   = 10
+        self.speed_level          = 1
+        self.speed_upgrade_price  = 50
+        self.speed_price_step     = 20
+
+    def update_skill_level(self):
+        self.health_level = (self.health_upgrade - 100) // self.health_upgrade_step + 1
+        self.damage_level = (self.damage_upgrade - 50)  // self.damage_upgrade_step  + 1
+        self.speed_level  = (self.speed_upgrade  - 150) // self.speed_upgrade_step   + 1
+
+    def get_upgrade_price(self, skill):
+        if skill == 'health':
+            return self.health_upgrade_price + self.health_level * self.health_price_step
+        if skill == 'damage':
+            return self.damage_upgrade_price + self.damage_level * self.damage_price_step
+        if skill == 'speed':
+            return self.speed_upgrade_price  + self.speed_level  * self.speed_price_step
+
+    def next_upgrage_price(self):
+        self.next_health_upgrade_price = self.get_upgrade_price('health')
+        self.next_damage_upgrade_price = self.get_upgrade_price('damage')
+        self.next_speed_upgrade_price  = self.get_upgrade_price('speed')
 
     def update(self):
         self.prev_enemies_counter = self.enemies_counter
@@ -51,6 +84,7 @@ class Gameplay:
             self.start_wave_timer()
         else:
             self.game_stats = self.game.game_stats
+        self.game.change_gun(self.game.current_gun.gun_name, sound=False)
         self.game.game_paused = False
 
     def start_wave_timer(self):
@@ -157,16 +191,16 @@ class Gameplay:
         bar_w, bar_h = 200, 24
         x, y = 20, 20
         hp, max_hp = self.game.player.health, self.game.player.max_health
-        pygame.draw.rect(surface, (60, 60, 60), (x, y, bar_w, bar_h), border_radius=6)
-        pygame.draw.rect(surface, (76, 184, 28), (x, y, int(bar_w * max(hp, 0) / max_hp), bar_h), border_radius=6)
-        pygame.draw.rect(surface, (255, 255, 255), (x, y, bar_w, bar_h), 1, border_radius=6)
-        surface.blit(font.render(f'{int(hp)} / {max_hp}', True, (255, 255, 255)),
-                     font.render(f'{int(hp)} / {max_hp}', True, (255,255,255)).get_rect(center=(x + bar_w//2, y + bar_h//2)))
+        pygame.draw.rect(surface, (60, 60, 60),   (x, y, bar_w, bar_h), border_radius=6)
+        pygame.draw.rect(surface, (76, 184, 28),  (x, y, int(bar_w * max(hp, 0) / max_hp), bar_h), border_radius=6)
+        pygame.draw.rect(surface, (255, 255, 255),(x, y, bar_w, bar_h), 1, border_radius=6)
+        hp_txt = font.render(f'{int(hp)} / {max_hp}', True, (255, 255, 255))
+        surface.blit(hp_txt, hp_txt.get_rect(center=(x + bar_w // 2, y + bar_h // 2)))
 
-        surface.blit(font.render(f'Волна: {self.game_stats.wave}',   True, (255,255,255)), (20, 52))
-        surface.blit(font.render(f'{self.game_stats.money} $',       True, (255,220,0)),   (20, 78))
-        surface.blit(small.render(f'Врагов: {len(self.game.enemy_sprites)}', True, (200,200,200)), (20, 104))
-        surface.blit(small.render(f'Убито: {self.game_stats.kills}', True, (200,200,200)), (20, 122))
+        surface.blit(font.render(f'Волна: {self.game_stats.wave}',              True, (255, 255, 255)), (20, 52))
+        surface.blit(font.render(f'{self.game_stats.money} $',                  True, (255, 220, 0)),   (20, 78))
+        surface.blit(small.render(f'Врагов: {len(self.game.enemy_sprites)}',    True, (200, 200, 200)), (20, 104))
+        surface.blit(small.render(f'Убито: {self.game_stats.kills}',            True, (200, 200, 200)), (20, 122))
 
     def draw(self):
         self.game.all_sprites.draw(self.game.player.rect.center)
@@ -178,7 +212,7 @@ class Gameplay:
                 and not self.game.enemy_sprites):
             self.ending_wave()
 
-    # Временно для разработки: K — убить всех врагов
+    # K — убить всех врагов (dev tool)
     def input(self):
         keys = pygame.key.get_pressed()
         prev_k = getattr(self, '_prev_k', False)
@@ -198,7 +232,6 @@ class Gameplay:
 
         if hasattr(self, 'ending_wave_timer'):
             self.ending_wave_timer.update()
-
         if hasattr(self, 'game_over_timer'):
             self.game_over_timer.update()
 
@@ -209,150 +242,269 @@ class Gameplay:
                     self.spawn_timers.remove(timer)
 
 
+# ===================== InGameWindow =====================
+
+class InGameWindow:
+    def __init__(self, game, title='', size=(800, 520)):
+        self.game = game
+        self.display_surface = pygame.display.get_surface()
+        self.width, self.height = size
+        self.bg_color = (30, 30, 30, 180)
+        self.window_rect = pygame.Rect(0, 0, *size)
+        self.window_rect.center = self.display_surface.get_rect().center
+        self.title = title
+
+    def on_enter(self):
+        self.create_buttons()
+
+    def create_buttons(self):
+        pass
+
+    def draw(self):
+        self.game.all_sprites.draw(self.game.player.rect.center)
+
+        overlay = pygame.Surface(self.display_surface.get_size(), pygame.SRCALPHA)
+        overlay.fill(self.bg_color)
+        self.display_surface.blit(overlay, (0, 0))
+
+        window_surf = pygame.Surface(self.window_rect.size, pygame.SRCALPHA)
+        pygame.draw.rect(window_surf, (50, 50, 50, 120), window_surf.get_rect(), border_radius=20)
+        self.display_surface.blit(window_surf, self.window_rect.topleft)
+
+        if self.title:
+            font = self.game.m_font
+            title_surf = font.render(self.title, True, 'white')
+            self.display_surface.blit(
+                title_surf,
+                title_surf.get_rect(center=(self.window_rect.centerx, self.window_rect.top - 50))
+            )
+
+        self.game.buttons_sprites.draw(self.display_surface)
+
+    def update(self, dt):
+        self.game.buttons_sprites.update(dt)
+
+
 # ===================== Shop =====================
 
-class Shop:
+class Shop(InGameWindow):
     state_name = 'shop'
     music_state = 'shop'
 
-    HEAL_PRICE = 30
+    _ALL_GUNS = None  # populated lazily after sprites module is fully loaded
 
     def __init__(self, game):
-        self.game = game
-        self._buttons = {}
+        super().__init__(game, title='Магазин', size=(800, 520))
+        self.all_guns = {
+            Pistol.gun_name:      Pistol,
+            Shotgun.gun_name:     Shotgun,
+            SniperRifle.gun_name: SniperRifle,
+            MachineGun.gun_name:  MachineGun,
+        }
 
     def on_enter(self):
         self.game.game_paused = True
+        super().on_enter()
 
-    # --- цены апгрейдов (формула из Blitzframe-main) ---
-    def _health_price(self):
-        level = (self.game.game_stats.health_upgrade - 100) // 20 + 1
-        return 30 + level * 10
+    def create_buttons(self):
+        cols, rows = 3, 4
+        h_margin, v_top, v_bot = 40, 70, 70
+        sp_x, sp_y = 20, 20
 
-    def _damage_price(self):
-        level = (self.game.game_stats.damage_upgrade - 50) // 4 + 1
-        return 40 + level * 15
+        btn_w = (self.window_rect.width  - 2 * h_margin - (cols - 1) * sp_x) // cols
+        btn_h = (self.window_rect.height - v_top - v_bot  - (rows - 1) * sp_y) // rows
 
-    def _speed_price(self):
-        level = (self.game.game_stats.speed_upgrade - 150) // 10 + 1
-        return 50 + level * 20
+        self.buttons = [[None] * cols for _ in range(rows)]
 
-    def _can_buy(self, price):
-        if self.game.game_stats.money >= price:
+        gun_order = [Pistol.gun_name, Shotgun.gun_name, SniperRifle.gun_name, MachineGun.gun_name]
+
+        for row in range(rows):
+            for col in range(cols):
+                x = self.window_rect.left + h_margin + col * (btn_w + sp_x) + btn_w // 2
+                y = self.window_rect.top  + v_top    + row * (btn_h + sp_y) + btn_h // 2
+                btn = None
+
+                # col 0 — guns
+                if col == 0:
+                    gn = gun_order[row]
+                    if gn in self.game.available_weapons:
+                        img_key = f'choosen_{gn}' if self.game.current_gun.gun_name == gn else f'open_{gn}'
+                        btn = Button(groups=self.game.buttons_sprites, pos=(x, y),
+                                     image=self.game.buttons_frames[img_key],
+                                     callback=f'select_{gn}')
+                    else:
+                        btn = Button(groups=self.game.buttons_sprites, pos=(x, y),
+                                     image=self.game.buttons_frames[f'locked_{gn}'],
+                                     callback=f'buy_{gn}')
+
+                # col 1 — start wave (row 0 only)
+                elif col == 1 and row == 0:
+                    btn = Button(groups=self.game.buttons_sprites, pos=(x, y),
+                                 image=self.game.buttons_frames['start_wave'],
+                                 callback='next_wave')
+
+                # col 2 — heal + upgrades
+                elif col == 2:
+                    callbacks = ['heal_player', 'health_upgrade', 'damage_upgrade', 'speed_upgrade']
+                    keys      = ['heal',        'health_upgrade', 'damage_upgrade', 'speed_upgrade']
+                    btn = Button(groups=self.game.buttons_sprites, pos=(x, y),
+                                 image=self.game.buttons_frames[keys[row]],
+                                 callback=callbacks[row])
+
+                if btn:
+                    self.buttons[row][col] = btn
+
+    def can_buy(self, price):
+        if price <= self.game.game_stats.money:
             self.game.game_stats.money -= price
             return True
+        self.game.play_sound('not_money')
         return False
 
-    # --- отрисовка одной кнопки, возвращает Rect ---
-    def _draw_btn(self, surface, rect, label, font, affordable=True):
-        color = (50, 140, 50) if affordable else (80, 80, 80)
-        pygame.draw.rect(surface, color, rect, border_radius=8)
-        pygame.draw.rect(surface, (200, 200, 200), rect, 1, border_radius=8)
-        txt = font.render(label, True, (255, 255, 255))
-        surface.blit(txt, txt.get_rect(center=rect.center))
-        return rect
+    def input(self):
+        for row in self.buttons:
+            for btn in row:
+                if btn and btn.is_clicked():
+                    cb = btn.callback
 
-    def draw(self):
-        surface = self.game.display_surface
+                    if cb == 'next_wave':
+                        self.game.change_state('gameplay', animation=False)
+                        self.game.gameplay.start_wave_timer()
 
-        # фон — замёрший игровой мир
-        self.game.all_sprites.draw(self.game.player.rect.center)
+                    elif cb == 'heal_player':
+                        player = self.game.player
+                        if player.health < player.max_health and self.can_buy(self.game.game_stats.heal_price):
+                            player.health = player.max_health
+                            self.game.play_sound('heal')
 
-        overlay = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 170))
-        surface.blit(overlay, (0, 0))
+                    elif cb == 'health_upgrade':
+                        price = self.game.game_stats.get_upgrade_price('health')
+                        if self.can_buy(price):
+                            self.game.play_sound('skill_upgrade')
+                            stats = self.game.game_stats
+                            was_full = self.game.player.health == self.game.player.max_health
+                            stats.health_upgrade += stats.health_upgrade_step
+                            stats.update_skill_level()
+                            self.game.player.max_health = stats.health_upgrade
+                            if was_full:
+                                self.game.player.health = stats.health_upgrade
 
-        title_font = pygame.font.SysFont('monospace', 52, bold=True)
-        font       = pygame.font.SysFont('monospace', 26)
-        small      = pygame.font.SysFont('monospace', 20)
+                    elif cb == 'damage_upgrade':
+                        price = self.game.game_stats.get_upgrade_price('damage')
+                        if self.can_buy(price):
+                            self.game.play_sound('skill_upgrade')
+                            stats = self.game.game_stats
+                            stats.damage_upgrade += stats.damage_upgrade_step
+                            stats.update_skill_level()
+                            self.game.current_gun.damage = stats.damage_upgrade
 
-        cx = WINDOW_WIDTH // 2
-        cy = WINDOW_HEIGHT // 2
+                    elif cb == 'speed_upgrade':
+                        price = self.game.game_stats.get_upgrade_price('speed')
+                        if self.can_buy(price):
+                            self.game.play_sound('skill_upgrade')
+                            stats = self.game.game_stats
+                            stats.speed_upgrade += stats.speed_upgrade_step
+                            stats.update_skill_level()
+                            self.game.player.speed = stats.speed_upgrade
 
-        # заголовок
-        surface.blit(
-            title_font.render('МАГАЗИН', True, (255, 220, 80)),
-            title_font.render('МАГАЗИН', True, (255,220,80)).get_rect(center=(cx, cy - 220))
+                    elif cb.startswith(('select_', 'buy_')):
+                        _, gn = cb.split('_', 1)
+                        if cb.startswith('select_'):
+                            self.game.change_gun(gn)
+                        else:
+                            price = self.all_guns[gn].price
+                            if self.can_buy(price):
+                                self.game.available_weapons[gn] = self.all_guns[gn]
+                                self.game.change_gun(gn)
+                                self.game.play_sound('buy_gun')
+                                btn.custom_image = self.game.buttons_frames[f'open_{gn}']
+                                btn.image = btn.custom_image.copy()
+                                btn.callback = f'select_{gn}'
+                        self.update_gun_buttons_icons()
+
+    def update_gun_buttons_icons(self):
+        for row in self.buttons:
+            for btn in row:
+                if btn and btn.callback.startswith(('select_', 'buy_')):
+                    _, gn = btn.callback.split('_', 1)
+                    if btn.callback.startswith('select_'):
+                        key = f'choosen_{gn}' if self.game.current_gun.gun_name == gn else f'open_{gn}'
+                        btn.custom_image = self.game.buttons_frames[key]
+                        btn.image = btn.custom_image.copy()
+
+    def draw_stats(self):
+        font  = self.game.s_font
+        small = self.game.xs_font
+        stats = self.game.game_stats
+        color = (255, 255, 255)
+
+        # upgrade levels (центральная колонка)
+        mid_btn = self.buttons[0][1]
+        if mid_btn:
+            small_font = pygame.font.SysFont('monospace', 20)
+            bx, by = mid_btn.rect.centerx, mid_btn.rect.bottom + 20
+            lh = 28
+            for i, (label, level) in enumerate([
+                ('Здоровье', stats.health_level),
+                ('Урон',     stats.damage_level),
+                ('Скорость', stats.speed_level),
+            ]):
+                txt = small_font.render(f'{label}: {level}', True, color)
+                self.display_surface.blit(txt, txt.get_rect(center=(bx, by + (i + 1) * lh)))
+
+        # цены апгрейдов (правая колонка)
+        stats.next_upgrage_price()
+        price_map = {
+            'heal':   (stats.heal_price,               '#E07050'),
+            'health': (stats.next_health_upgrade_price, '#50C878'),
+            'damage': (stats.next_damage_upgrade_price, '#E08030'),
+            'speed':  (stats.next_speed_upgrade_price,  '#5090E0'),
+        }
+        for row in range(4):
+            btn = self.buttons[row][2]
+            if not btn:
+                continue
+            prefix = btn.callback.split('_')[0]
+            if prefix in price_map:
+                price, col = price_map[prefix]
+                can = stats.money >= price
+                txt_col = col if can else '#888888'
+                txt = small.render(f'{price} $', True, txt_col)
+                self.display_surface.blit(txt, txt.get_rect(midtop=(btn.rect.centerx, btn.rect.bottom + 4)))
+
+        # цены оружия (левая колонка) + tooltip при наведении
+        for row in range(4):
+            btn = self.buttons[row][0]
+            if not btn:
+                continue
+            _, gn = btn.callback.split('_', 1)
+            if btn.callback.startswith('buy_'):
+                price = self.all_guns[gn].price
+                can = stats.money >= price
+                txt = small.render(f'{price} $', True, '#2BCD3B' if can else '#E21A1A')
+                self.display_surface.blit(txt, txt.get_rect(center=(btn.rect.centerx, btn.rect.bottom + 14)))
+
+            if btn.was_hovered and gn in self.all_guns:
+                desc = load_json(join('settings', 'gun_settings.json')).get(gn, {}).get('description', '')
+                if desc:
+                    draw_text_window(self.display_surface, (btn.rect.left, btn.rect.centery), desc)
+
+        # деньги (над окном)
+        money_txt = font.render(f'{stats.money} $', True, (255, 220, 0))
+        self.display_surface.blit(
+            money_txt,
+            money_txt.get_rect(center=(self.window_rect.centerx, self.window_rect.top - 100))
         )
 
-        stats = self.game.game_stats
-        hp_lvl  = (stats.health_upgrade - 100) // 20 + 1
-        dmg_lvl = (stats.damage_upgrade - 50)  // 4  + 1
-        spd_lvl = (stats.speed_upgrade  - 150) // 10 + 1
-
-        # деньги / убийства
-        surface.blit(font.render(f'Деньги: {stats.money} $', True, (255, 220, 0)),
-                     font.render(f'Деньги: {stats.money} $', True, (255,220,0)).get_rect(center=(cx, cy - 165)))
-        surface.blit(small.render(f'Волна {stats.wave}  |  Убито: {stats.kills}', True, (180, 180, 180)),
-                     small.render(f'Волна {stats.wave}  |  Убито: {stats.kills}', True, (180,180,180)).get_rect(center=(cx, cy - 135)))
-
-        # кнопки
-        bw, bh, sp = 340, 46, 58
-        self._buttons = {
-            'heal':   pygame.Rect(0, 0, bw, bh),
-            'health': pygame.Rect(0, 0, bw, bh),
-            'damage': pygame.Rect(0, 0, bw, bh),
-            'speed':  pygame.Rect(0, 0, bw, bh),
-            'start':  pygame.Rect(0, 0, bw, bh),
-        }
-        for i, key in enumerate(['heal', 'health', 'damage', 'speed']):
-            self._buttons[key].center = (cx, cy - 90 + i * sp)
-        self._buttons['start'].center = (cx, cy - 90 + 4 * sp + 20)
-
-        money = stats.money
-        self._draw_btn(surface, self._buttons['heal'],
-                       f'Лечение полностью — {self.HEAL_PRICE} $', small,
-                       money >= self.HEAL_PRICE)
-        self._draw_btn(surface, self._buttons['health'],
-                       f'HP (ур.{hp_lvl}) — {self._health_price()} $', small,
-                       money >= self._health_price())
-        self._draw_btn(surface, self._buttons['damage'],
-                       f'Урон (ур.{dmg_lvl}) — {self._damage_price()} $', small,
-                       money >= self._damage_price())
-        self._draw_btn(surface, self._buttons['speed'],
-                       f'Скорость (ур.{spd_lvl}) — {self._speed_price()} $', small,
-                       money >= self._speed_price())
-        self._draw_btn(surface, self._buttons['start'],
-                       'Следующая волна  →', font, True)
-
-    def input(self):
-        mouse = pygame.mouse.get_pressed()
-        prev = getattr(self, '_prev_mouse', False)
-        just_clicked = mouse[0] and not prev
-        self._prev_mouse = mouse[0]
-        if not just_clicked:
-            return
-        pos = pygame.mouse.get_pos()
-        stats = self.game.game_stats
-        player = self.game.player
-
-        if self._buttons.get('heal') and self._buttons['heal'].collidepoint(pos):
-            if player.health < player.max_health and self._can_buy(self.HEAL_PRICE):
-                player.health = player.max_health
-
-        elif self._buttons.get('health') and self._buttons['health'].collidepoint(pos):
-            if self._can_buy(self._health_price()):
-                was_full = player.health == player.max_health
-                stats.health_upgrade += 20
-                player.max_health = stats.health_upgrade
-                if was_full:
-                    player.health = stats.health_upgrade
-
-        elif self._buttons.get('damage') and self._buttons['damage'].collidepoint(pos):
-            if self._can_buy(self._damage_price()):
-                stats.damage_upgrade += 4
-
-        elif self._buttons.get('speed') and self._buttons['speed'].collidepoint(pos):
-            if self._can_buy(self._speed_price()):
-                stats.speed_upgrade += 10
-                player.speed = stats.speed_upgrade
-
-        elif self._buttons.get('start') and self._buttons['start'].collidepoint(pos):
-            self.game.change_state('gameplay')
-            self.game.gameplay.start_wave_timer()
+    def draw(self):
+        super().draw()
+        self.draw_stats()
+        self.game.states['gameplay'].draw_game_ui()
 
     def update(self, dt):
+        super().update(dt)
         self.input()
+        self.update_gun_buttons_icons()
 
 
 # ===================== GameOver =====================
@@ -390,7 +542,7 @@ class GameOver:
         stats = self.game.game_stats
 
         for surf, pos in [
-            (big_font.render('GAME OVER', True, (220, 40, 40)),          (cx, cy - 70)),
+            (big_font.render('GAME OVER', True, (220, 40, 40)),            (cx, cy - 70)),
             (font.render('Нажмите R для рестарта', True, (255, 255, 255)), (cx, cy + 10)),
             (font.render(f'Убито: {stats.kills}   Волна: {stats.wave}', True, (200, 200, 200)), (cx, cy + 55)),
         ]:

@@ -376,6 +376,7 @@ class Gun(pygame.sprite.Sprite):
 
 class Pistol(Gun):
     gun_name = 'pistol'
+    price = 0
 
     def __init__(self, groups, player):
         super().__init__(groups, player)
@@ -389,10 +390,94 @@ class Pistol(Gun):
             self.player.game.play_sound('pistol_shot')
             Bullet(
                 (self.all_sprites, self.bullet_sprites),
-                self.rect.center,
-                self.bullet_surf,
-                self.player_direction,
-                self.base_damage
+                self.rect.center, self.bullet_surf,
+                self.player_direction, self.base_damage
+            )
+            self.cooldown_timer.activate()
+
+    def update(self, dt):
+        super().update(dt)
+        self.cooldown_timer.update()
+
+
+class Shotgun(Gun):
+    gun_name = 'shotgun'
+    price = 150
+
+    def __init__(self, groups, player):
+        super().__init__(groups, player)
+        self.cooldown_timer = Timer(self.cooldown)
+
+    def load_surf(self):
+        return pygame.image.load(join('images', 'guns', 'shotgun.png')).convert_alpha()
+
+    def create_bulet(self):
+        if not self.cooldown_timer:
+            self.player.game.play_sound('shotgun_shot')
+            self.player.game.play_sound('shotgun_reload')
+            base_angle = atan2(self.player_direction.y, self.player_direction.x)
+            for _ in range(7):
+                angle = base_angle + radians(random.uniform(-17.5, 17.5))
+                direction = pygame.Vector2(cos(angle), sin(angle))
+                Bullet(
+                    (self.all_sprites, self.bullet_sprites),
+                    self.rect.center, self.bullet_surf,
+                    direction, self.damage, lifetime=380, speed=1000
+                )
+            self.cooldown_timer.activate()
+
+    def update(self, dt):
+        super().update(dt)
+        self.cooldown_timer.update()
+
+
+class SniperRifle(Gun):
+    gun_name = 'sniper'
+    price = 200
+
+    def __init__(self, groups, player):
+        super().__init__(groups, player)
+        self.cooldown_timer = Timer(self.cooldown)
+
+    def load_surf(self):
+        return pygame.image.load(join('images', 'guns', 'sniper.png')).convert_alpha()
+
+    def create_bulet(self):
+        if not self.cooldown_timer:
+            self.player.game.play_sound('sniper_shot')
+            self.reload_timer = Timer(400, False, True, lambda: self.player.game.play_sound('sniper_reload'))
+            Bullet(
+                (self.all_sprites, self.bullet_sprites),
+                self.rect.center, self.bullet_surf,
+                self.player_direction, self.damage, lifetime=2000, speed=3000
+            )
+            self.cooldown_timer.activate()
+
+    def update(self, dt):
+        super().update(dt)
+        self.cooldown_timer.update()
+        if hasattr(self, 'reload_timer'):
+            self.reload_timer.update()
+
+
+class MachineGun(Gun):
+    gun_name = 'machine-gun'
+    price = 180
+
+    def __init__(self, groups, player):
+        super().__init__(groups, player)
+        self.cooldown_timer = Timer(self.cooldown)
+
+    def load_surf(self):
+        return pygame.image.load(join('images', 'guns', 'machine-gun.png')).convert_alpha()
+
+    def create_bulet(self):
+        if not self.cooldown_timer:
+            self.player.game.play_sound('machine-gun_shot')
+            Bullet(
+                (self.all_sprites, self.bullet_sprites),
+                self.rect.center, self.bullet_surf,
+                self.player_direction, self.damage, lifetime=1000, speed=600
             )
             self.cooldown_timer.activate()
 

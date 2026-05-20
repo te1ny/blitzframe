@@ -7,6 +7,7 @@ class Button(pygame.sprite.Sprite):
         super().__init__(groups)
         self._prev_pressed = False
         self.was_hovered = False
+        self.callback = callback
         self.custom_image = image
 
         if self.custom_image:
@@ -105,3 +106,20 @@ class Slider(pygame.sprite.Sprite):
 
     def update(self, dt):
         self.input()
+
+
+def draw_text_window(surface, pos, text, font=None, padding=14, bg_color=(50, 50, 50, 200), text_color=(220, 220, 220), border_radius=8):
+    if not font:
+        font = pygame.font.SysFont('monospace', 18)
+    lines = text.split('\n')
+    line_surfs = [font.render(ln, True, text_color) for ln in lines]
+    w = max(s.get_width() for s in line_surfs) + padding * 2
+    lh = line_surfs[0].get_height() if line_surfs else 20
+    h = lh * len(line_surfs) + padding * 2
+    window_surf = pygame.Surface((w, h), pygame.SRCALPHA)
+    pygame.draw.rect(window_surf, bg_color, window_surf.get_rect(), border_radius=border_radius)
+    for i, s in enumerate(line_surfs):
+        window_surf.blit(s, (padding, padding + i * lh))
+    x = pos[0] - w - 10
+    y = pos[1] - h // 2
+    surface.blit(window_surf, (x, y))
