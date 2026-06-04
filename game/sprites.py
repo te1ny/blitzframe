@@ -106,6 +106,7 @@ class Player(pygame.sprite.Sprite):
             self.health -= int(damage)
             self.damage_delay_timer.activate()
             self.game.all_sprites.shake(10)
+            self.game.play_sound('player_damage')
 
     def death(self):
         self.player_alive = False
@@ -162,6 +163,7 @@ class Enemy(AnimatedSprite):
         self.animation_speed = 0
         self.image = pygame.mask.from_surface(self.image).to_surface()
         self.image.set_colorkey('black')
+        self.player.game.play_sound('enemy_kill')
 
     def move(self, dt):
         direction = pygame.Vector2(self.player.rect.center) - pygame.Vector2(self.rect.center)
@@ -235,6 +237,7 @@ class FirstBoss(Enemy):
     def spiral_attack(self):
         num_bullets = 8
         self.spiral_angle = getattr(self, 'spiral_angle', 0) + 10
+        self.game.play_sound('laser_shot')
         for i in range(num_bullets):
             angle = radians(self.spiral_angle + (360 / num_bullets) * i)
             direction = pygame.Vector2(cos(angle), sin(angle))
@@ -246,6 +249,7 @@ class FirstBoss(Enemy):
 
     def wave_attack(self):
         bullets_per_ring = 12
+        self.game.play_sound('laser_shot')
         for i in range(bullets_per_ring):
             angle = radians((360 / bullets_per_ring) * i)
             direction = pygame.Vector2(cos(angle), sin(angle))
@@ -256,6 +260,7 @@ class FirstBoss(Enemy):
             )
 
     def laser_attack(self):
+        self.game.play_sound('laser_shot')
         direction = (pygame.Vector2(self.game.player.rect.center) - pygame.Vector2(self.rect.center)).normalize()
         Bullet(
             (self.game.all_sprites, self.game.enemies_bullet_sprites),
@@ -264,6 +269,7 @@ class FirstBoss(Enemy):
         )
 
     def triple_shot_attack(self):
+        self.game.play_sound('laser_shot')
         direction = (pygame.Vector2(self.game.player.rect.center) - pygame.Vector2(self.rect.center)).normalize()
         for a in [-15, 0, 15]:
             rotated = direction.rotate(a)
@@ -274,6 +280,7 @@ class FirstBoss(Enemy):
             )
 
     def star_attack(self):
+        self.game.play_sound('laser_shot')
         for d in [(0, -1), (1, -1), (1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1)]:
             direction = pygame.Vector2(*d).normalize()
             Bullet(

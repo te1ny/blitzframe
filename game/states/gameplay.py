@@ -72,7 +72,7 @@ class Gameplay:
             self.game.gameplay = self
             self.game.player = Player(
                 self.game.all_sprites,
-                (WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2),
+                self.game.tilemap.player_spawner(),
                 self.game.player_frames,
                 self.game
             )
@@ -132,24 +132,19 @@ class Gameplay:
                     False, True, make_spawn()
                 ))
 
-    def _spawn_pos(self):
-        px, py = self.game.player.rect.center
-        side = random.choice(['top', 'bottom', 'left', 'right'])
-        hw, hh = WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2
-        m = 100
-        if side == 'top':    return (random.randint(px - hw, px + hw), py - hh - m)
-        if side == 'bottom': return (random.randint(px - hw, px + hw), py + hh + m)
-        if side == 'left':   return (px - hw - m, random.randint(py - hh, py + hh))
-        return (px + hw + m, random.randint(py - hh, py + hh))
+    def _spawn_pos(self, min_distance=600):
+        player_pos = self.game.player.rect.center
+        all_spawners = self.game.tilemap.enemy_spawner()
+        spawners = [
+            pos for pos in all_spawners
+            if ((pos[0] - player_pos[0]) ** 2 + (pos[1] - player_pos[1]) ** 2) ** 0.5 > min_distance
+        ]
+        if not spawners:
+            spawners = all_spawners
+        return random.choice(spawners) if spawners else player_pos
 
     def _boss_spawn_pos(self):
-        px, py = self.game.player.rect.center
-        side = random.choice(['top', 'bottom', 'left', 'right'])
-        hw, hh, m = WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2, 300
-        if side == 'top':    return (px, py - hh - m)
-        if side == 'bottom': return (px, py + hh + m)
-        if side == 'left':   return (px - hw - m, py)
-        return (px + hw + m, py)
+        return self.game.tilemap.boss_spawner()
 
     def ending_wave(self):
         self.game_stats.wave_active = False
