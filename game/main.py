@@ -6,6 +6,7 @@ from groups import AllSprites
 from support import *
 from sprites import *
 from sound import Sound
+from tilemap import Tilemap
 
 
 class Game:
@@ -21,9 +22,8 @@ class Game:
 
         create_score_json()
 
-        self.background = Background((WINDOW_WIDTH, WINDOW_HEIGHT))
-
         self.reset_game()
+        self.background = Background((WINDOW_WIDTH, WINDOW_HEIGHT), self)
         self.sound = Sound(self)
 
     def reset_game(self):
@@ -33,8 +33,15 @@ class Game:
         self.enemy_sprites = pygame.sprite.Group()
         self.bullet_sprites = pygame.sprite.Group()
         self.enemies_bullet_sprites = pygame.sprite.Group()
+        self.collision_sprites = pygame.sprite.Group()
 
         self.available_weapons = {'pistol': Pistol}
+
+        self.tilemap = Tilemap(self.all_sprites, self.collision_sprites)
+        self.tilemap.setup()
+
+        if hasattr(self, 'background'):
+            self.background.map_surface = None
 
         if hasattr(self, 'player'):
             delattr(self, 'player')

@@ -4,32 +4,48 @@ from support import load_json
 
 
 class Background:
-    def __init__(self, screen_size, speed=20):
-        self.surface = pygame.Surface(screen_size)
-        self.surface.fill((15, 15, 25))
-        self.offset = pygame.Vector2(0, 0)
-        self.direction = pygame.Vector2(1, 1).normalize()
-        self.speed = speed
-        # subtle star-like dots
-        self._dots = [
-            (random.randint(0, screen_size[0]), random.randint(0, screen_size[1]),
-             random.randint(1, 3), random.randint(80, 180))
-            for _ in range(120)
-        ]
-        self._render()
+    def __init__(self, screen_size, game):
+        self.screen_size = screen_size
+        self.game = game
+        self.map_surface = None
+        self.offset = pygame.Vector2(800, 600)
+        self.scroll = pygame.Vector2(22, 11)
+        self._max_x = self._max_y = 0
+        self.overlay = pygame.Surface(screen_size, pygame.SRCALPHA)
+        self.overlay.fill((0, 0, 0, 130))
 
-    def _render(self):
-        self.surface.fill((15, 15, 25))
-        for x, y, r, a in self._dots:
-            dot = pygame.Surface((r * 2, r * 2), pygame.SRCALPHA)
-            pygame.draw.circle(dot, (255, 255, 255, a), (r, r), r)
-            self.surface.blit(dot, (x - r, y - r))
+    def _build(self):
+        tm = self.game.tilemap
+        w, h = tm.level_width, tm.level_height
+        self.map_surface = pygame.Surface((w, h))
+        self.map_surface.fill((30, 50, 30))
+        for x, y, image in tm.map.get_layer_by_name('Ground').tiles():
+            if image:
+                self.map_surface.blit(image, (x * TILE_SIZE, y * TILE_SIZE))
+        self._max_x = max(w - self.screen_size[0], 0)
+        self._max_y = max(h - self.screen_size[1], 0)
 
     def draw(self, surface):
-        surface.blit(self.surface, (0, 0))
+        if self.map_surface is None:
+            if hasattr(self.game, 'tilemap'):
+                self._build()
+            else:
+                surface.fill((15, 25, 15))
+                return
+        ox = int(self.offset.x) % (self._max_x + 1) if self._max_x else 0
+        oy = int(self.offset.y) % (self._max_y + 1) if self._max_y else 0
+        surface.blit(self.map_surface, (-ox, -oy))
+        surface.blit(self.overlay, (0, 0))
 
     def update(self, dt):
-        pass
+        if self.map_surface is None:
+            return
+        self.offset.x += self.scroll.x * dt
+        self.offset.y += self.scroll.y * dt
+        if self._max_x and self.offset.x > self._max_x:
+            self.offset.x = 0
+        if self._max_y and self.offset.y > self._max_y:
+            self.offset.y = 0
 
 
 class MainMenu:
