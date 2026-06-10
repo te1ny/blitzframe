@@ -101,6 +101,42 @@ def write_score(kills, waves, total):
     write_json(path, {key: value for key, value in enumerate(best_scores, start=1)})
 
 
+class FadeText:
+    def __init__(self, text, font, color, pos, appear_speed=5, hold_time=1.0, disappear_speed=5):
+        self.base_surf = font.render(text, True, color)
+        self.text_surf = self.base_surf.convert_alpha()
+        self.text_rect = self.text_surf.get_rect(center=pos)
+        self.appear_speed = appear_speed
+        self.hold_time = hold_time
+        self.disappear_speed = disappear_speed
+        self.state = 'idle'
+        self.alpha = 0
+        self.start_time = 0
+
+    def start(self):
+        self.state = 'appearing'
+        self.alpha = 0
+        self.start_time = time.time()
+
+    def update(self, surface):
+        if self.state in ('idle', 'done'):
+            return
+        if self.state == 'appearing':
+            self.alpha = min(255, self.alpha + self.appear_speed)
+            if self.alpha >= 255:
+                self.state = 'holding'
+                self.start_time = time.time()
+        elif self.state == 'holding':
+            if time.time() - self.start_time >= self.hold_time:
+                self.state = 'disappearing'
+        elif self.state == 'disappearing':
+            self.alpha = max(0, self.alpha - self.disappear_speed)
+            if self.alpha <= 0:
+                self.state = 'done'
+        self.text_surf.set_alpha(self.alpha)
+        surface.blit(self.text_surf, self.text_rect)
+
+
 def transition_effect(surface, callback, fade_speed=20, hold_time=0.3, draw_callback=None):
     clock = pygame.time.Clock()
     fade_overlay = pygame.Surface(surface.get_size()).convert_alpha()

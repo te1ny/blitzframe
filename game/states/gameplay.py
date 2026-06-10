@@ -2,6 +2,7 @@ from settings import *
 from sprites import *
 from support import *
 from ui import Button, draw_text_window
+from support import FadeText
 
 
 class InGameStats:
@@ -92,6 +93,10 @@ class Gameplay:
 
     def starting_wave(self):
         self.game_stats.wave_active = True
+        self.game.play_sound('tick')
+        cx = WINDOW_WIDTH // 2
+        self.fade_text = FadeText(f'Волна {self.game_stats.wave}', self.game.l_font, (82, 61, 80), (cx, 70))
+        self.fade_text.start()
 
         waves_data = load_json(join('settings', 'waves.json'))
         max_wave = max(int(k) for k in waves_data.keys())
@@ -144,10 +149,19 @@ class Gameplay:
         return random.choice(spawners) if spawners else player_pos
 
     def _boss_spawn_pos(self):
-        return self.game.tilemap.boss_spawner()
+        px, py = self.game.player.rect.center
+        side = random.choice(['top', 'bottom', 'left', 'right'])
+        hw, hh, m = WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2, 300
+        if side == 'top':    return (px, py - hh - m)
+        if side == 'bottom': return (px, py + hh + m)
+        if side == 'left':   return (px - hw - m, py)
+        return (px + hw + m, py)
 
     def ending_wave(self):
         self.game_stats.wave_active = False
+        cx = WINDOW_WIDTH // 2
+        self.fade_text = FadeText(f'Волна {self.game_stats.wave} пройдена!', self.game.l_font, (82, 61, 80), (cx, 70))
+        self.fade_text.start()
         self.game_stats.wave += 1
         self.ending_wave_timer = Timer(2000, False, True, lambda: self.game.change_state('shop'))
 
@@ -180,26 +194,30 @@ class Gameplay:
 
     def draw_game_ui(self):
         surface = pygame.display.get_surface()
-        font  = pygame.font.SysFont('monospace', 22)
+        font  = pygame.font.SysFont('monospace', 24)
         small = pygame.font.SysFont('monospace', 16)
 
-        bar_w, bar_h = 200, 24
+        bar_w, bar_h = 200, 30
         x, y = 20, 20
         hp, max_hp = self.game.player.health, self.game.player.max_health
-        pygame.draw.rect(surface, (60, 60, 60),   (x, y, bar_w, bar_h), border_radius=6)
-        pygame.draw.rect(surface, (76, 184, 28),  (x, y, int(bar_w * max(hp, 0) / max_hp), bar_h), border_radius=6)
-        pygame.draw.rect(surface, (255, 255, 255),(x, y, bar_w, bar_h), 1, border_radius=6)
+        pygame.draw.rect(surface, (60, 60, 60),   (x, y, bar_w, bar_h), border_radius=8)
+        pygame.draw.rect(surface, (76, 184, 28),  (x, y, int(bar_w * max(hp, 0) / max_hp), bar_h), border_radius=8)
+        pygame.draw.rect(surface, (255, 255, 255),(x, y, bar_w, bar_h), 1, border_radius=8)
         hp_txt = font.render(f'{int(hp)} / {max_hp}', True, (255, 255, 255))
         surface.blit(hp_txt, hp_txt.get_rect(center=(x + bar_w // 2, y + bar_h // 2)))
 
-        surface.blit(font.render(f'Волна: {self.game_stats.wave}',              True, (255, 255, 255)), (20, 52))
-        surface.blit(font.render(f'{self.game_stats.money} $',                  True, (255, 220, 0)),   (20, 78))
-        surface.blit(small.render(f'Врагов: {len(self.game.enemy_sprites)}',    True, (200, 200, 200)), (20, 104))
-        surface.blit(small.render(f'Убито: {self.game_stats.kills}',            True, (200, 200, 200)), (20, 122))
+        money_font = pygame.font.SysFont('monospace', 32)
+        surface.blit(money_font.render(f'{self.game_stats.money} $', True, (0, 0, 0)), (20, 58))
+        surface.blit(small.render(f'Волна: {self.game_stats.wave}',              True, (200, 200, 200)), (20, 96))
+        surface.blit(small.render(f'Врагов: {len(self.game.enemy_sprites)}',    True, (200, 200, 200)), (20, 114))
+        surface.blit(small.render(f'Убито: {self.game_stats.kills}',            True, (200, 200, 200)), (20, 132))
 
     def draw(self):
         self.game.all_sprites.draw(self.game.player.rect.center)
         self.draw_game_ui()
+
+        if hasattr(self, 'fade_text'):
+            self.fade_text.update(self.game.display_surface)
 
         if (hasattr(self, 'spawn_timers') and not self.spawn_timers
                 and self.game_stats.enemies_counter == 0
@@ -447,7 +465,7 @@ class Shop(InGameWindow):
                 txt = small_font.render(f'{label}: {level}', True, color)
                 self.display_surface.blit(txt, txt.get_rect(center=(bx, by + (i + 1) * lh)))
 
-        # цены апгрейдов (правая колонка)
+        # цены апгрейдов (правая колонка) — под кнопками
         stats.next_upgrage_price()
         price_map = {
             'heal':   (stats.heal_price,               '#E07050'),
@@ -468,6 +486,7 @@ class Shop(InGameWindow):
                 self.display_surface.blit(txt, txt.get_rect(midtop=(btn.rect.centerx, btn.rect.bottom + 4)))
 
         # цены оружия (левая колонка) + tooltip при наведении
+        gun_settings = load_json(join('settings', 'gun_settings.json'))
         for row in range(4):
             btn = self.buttons[row][0]
             if not btn:
@@ -480,11 +499,11 @@ class Shop(InGameWindow):
                 self.display_surface.blit(txt, txt.get_rect(center=(btn.rect.centerx, btn.rect.bottom + 14)))
 
             if btn.was_hovered and gn in self.all_guns:
-                desc = load_json(join('settings', 'gun_settings.json')).get(gn, {}).get('description', '')
+                desc = gun_settings.get(gn, {}).get('description', '')
                 if desc:
                     draw_text_window(self.display_surface, (btn.rect.left, btn.rect.centery), desc)
 
-        # деньги (над окном)
+        # деньги над окном
         money_txt = font.render(f'{stats.money} $', True, (255, 220, 0))
         self.display_surface.blit(
             money_txt,
