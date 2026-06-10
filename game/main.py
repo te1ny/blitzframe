@@ -110,7 +110,7 @@ class Game:
             self.enemies_frames_dict[enemy_type] = {k: scale_frame(v) for k, v in frames.items()}
 
         boss_frames = folder_importer('images', 'enemies', 'first_boss')
-        self.enemies_frames_dict['first_boss'] = {k: scale_frame(v, scale=0.8) for k, v in boss_frames.items()}
+        self.enemies_frames_dict['first_boss'] = {k: scale_frame(v, scale=1.3) for k, v in boss_frames.items()}
 
         # real button images
         self.buttons_frames = folder_importer('images', 'buttons')

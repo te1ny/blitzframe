@@ -1,25 +1,35 @@
 {
     "1": {
+        "kills": 34,
+        "waves": 6,
+        "total": 128
+    },
+    "2": {
+        "kills": 34,
+        "waves": 6,
+        "total": 128
+    },
+    "3": {
         "kills": 33,
         "waves": 5,
         "total": 116
     },
-    "2": {
+    "4": {
         "kills": 13,
         "waves": 3,
         "total": 56
     },
-    "3": {
+    "5": {
         "kills": 5,
         "waves": 2,
         "total": 30
     },
-    "4": {
+    "6": {
         "kills": 0,
         "waves": 1,
         "total": 10
     },
-    "5": {
+    "7": {
         "kills": 0,
         "waves": 1,
         "total": 10

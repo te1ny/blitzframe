@@ -103,23 +103,33 @@ class Menu(MainMenu):
     def draw_score(self):
         font = self.game.s_font
         entry_font = self.game.xs_font
+        padding = 16
         window_rect = pygame.Rect(0, WINDOW_HEIGHT // 2 - WINDOW_HEIGHT // 5, 480, 400)
 
         window_surf = pygame.Surface(window_rect.size, pygame.SRCALPHA)
         pygame.draw.rect(window_surf, (50, 50, 50, 150), window_surf.get_rect(),
                          border_top_right_radius=20, border_bottom_right_radius=20)
-        self.display_surface.blit(window_surf, window_rect.topleft)
 
         title = font.render('Лучшие результаты', True, (255, 255, 255))
-        self.display_surface.blit(title, title.get_rect(midtop=(window_rect.centerx, window_rect.top + 15)))
+        window_surf.blit(title, title.get_rect(midtop=(window_rect.width // 2, 15)))
 
         scores = load_json(join('settings', 'score.json'))
+        lh = entry_font.get_height() + 6
         for i, (key, entry) in enumerate(sorted(scores.items(), key=lambda x: int(x[0]))):
             if i >= 6:
                 break
-            text = f"{key}. Волны: {entry['waves']}  Убийства: {entry['kills']}  Очки: {entry['total']}"
+            text = f"{key}. Вл:{entry['waves']}  Уб:{entry['kills']}  Оч:{entry['total']}"
             surf = entry_font.render(text, True, (220, 220, 220))
-            self.display_surface.blit(surf, (window_rect.left + 20, window_rect.top + 90 + i * 46))
+            # обрезаем по ширине таблички
+            max_w = window_rect.width - padding * 2
+            if surf.get_width() > max_w:
+                surf = surf.subsurface((0, 0, max_w, surf.get_height()))
+            y = 75 + i * lh
+            if y + surf.get_height() > window_rect.height - padding:
+                break
+            window_surf.blit(surf, (padding, y))
+
+        self.display_surface.blit(window_surf, window_rect.topleft)
 
     def draw(self):
         super().draw()
