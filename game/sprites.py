@@ -157,6 +157,7 @@ class Enemy(AnimatedSprite):
             self.speed = info['speed'] * speed_multiplier
         self.deal_damage_timer = Timer(1000, func=reset_damage)
         self.death_timer = Timer(200, func=self.kill)
+        self.bump_timer = Timer(0)
 
     def deal_damage(self):
         if not self.deal_damage_timer:
@@ -187,10 +188,22 @@ class Enemy(AnimatedSprite):
                     if self.direction.y > 0: self.hitbox_rect.bottom = sprite.rect.top
                     if self.direction.y < 0: self.hitbox_rect.top    = sprite.rect.bottom
 
+                if not self.bump_timer:
+                    offset = pygame.Vector2(self.player.rect.center) - pygame.Vector2(self.rect.center)
+                    if axis == 'horizontal':
+                        self.direction = pygame.Vector2(0, -1 if offset.y < 0 else 1)
+                        duration = int(sprite.rect.height * 11)
+                    else:
+                        self.direction = pygame.Vector2(-1 if offset.x < 0 else 1, 0)
+                        duration = int(sprite.rect.width * 11)
+                    self.bump_timer = Timer(duration)
+                    self.bump_timer.activate()
+
     def move(self, dt):
-        direction = pygame.Vector2(self.player.rect.center) - pygame.Vector2(self.rect.center)
-        if direction.length() > 0:
-            self.direction = direction.normalize()
+        if not self.bump_timer:
+            direction = pygame.Vector2(self.player.rect.center) - pygame.Vector2(self.rect.center)
+            if direction.length() > 0:
+                self.direction = direction.normalize()
         self.hitbox_rect.x += self.direction.x * self.speed * dt
         self._collision('horizontal')
         self.hitbox_rect.y += self.direction.y * self.speed * dt
@@ -208,6 +221,7 @@ class Enemy(AnimatedSprite):
 
     def update(self, dt):
         self.death_timer.update()
+        self.bump_timer.update()
         if not self.death_timer:
             self.deal_damage_timer.update()
             self.move(dt)
@@ -384,7 +398,9 @@ class Gun(pygame.sprite.Sprite):
 
     def rotate_gun(self):
         angle = -degrees(atan2(self.player_direction.y, self.player_direction.x))
-        self.image = pygame.transform.rotate(self.gun_surf, angle)
+        flip = self.player_direction.x < 0
+        gun_image = pygame.transform.flip(self.gun_surf, False, flip)
+        self.image = pygame.transform.rotate(gun_image, angle)
         offset = self.player_direction * 20
         self.rect = self.image.get_rect(
             center=(int(self.player.rect.centerx + offset.x), int(self.player.rect.centery + offset.y))
