@@ -167,12 +167,19 @@ class Gameplay:
 
     def collision(self):
         for bullet in list(self.game.bullet_sprites):
+            if pygame.sprite.spritecollideany(bullet, self.game.collision_sprites):
+                bullet.kill()
+                continue
             hits = pygame.sprite.spritecollide(bullet, self.game.enemy_sprites, False)
             if hits:
                 bullet.kill()
                 for enemy in hits:
                     if enemy.collision_active:
                         enemy.take_damage(bullet.damage)
+
+        for bullet in list(self.game.enemies_bullet_sprites):
+            if pygame.sprite.spritecollideany(bullet, self.game.collision_sprites):
+                bullet.kill()
 
         hits = pygame.sprite.spritecollide(self.game.player, self.game.enemies_bullet_sprites, True)
         for bullet in hits:
@@ -478,10 +485,10 @@ class Shop(InGameWindow):
         # цены апгрейдов (правая колонка) — под кнопками
         stats.next_upgrage_price()
         price_map = {
-            'heal':   (stats.heal_price,               '#E07050'),
-            'health': (stats.next_health_upgrade_price, '#50C878'),
-            'damage': (stats.next_damage_upgrade_price, '#E08030'),
-            'speed':  (stats.next_speed_upgrade_price,  '#5090E0'),
+            'heal':   stats.heal_price,
+            'health': stats.next_health_upgrade_price,
+            'damage': stats.next_damage_upgrade_price,
+            'speed':  stats.next_speed_upgrade_price,
         }
         for row in range(4):
             btn = self.buttons[row][2]
@@ -489,11 +496,11 @@ class Shop(InGameWindow):
                 continue
             prefix = btn.callback.split('_')[0]
             if prefix in price_map:
-                price, col = price_map[prefix]
+                price = price_map[prefix]
                 can = stats.money >= price
-                txt_col = col if can else '#888888'
+                txt_col = '#2BCD3B' if can else '#E21A1A'
                 txt = small.render(f'{price} $', True, txt_col)
-                self.display_surface.blit(txt, txt.get_rect(midtop=(btn.rect.centerx, btn.rect.bottom + 4)))
+                self.display_surface.blit(txt, txt.get_rect(center=(btn.rect.centerx - 34, btn.rect.centery + 2)))
 
         # цены оружия (левая колонка) + tooltip при наведении
         gun_settings = load_json(join('settings', 'gun_settings.json'))

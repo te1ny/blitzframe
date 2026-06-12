@@ -94,9 +94,21 @@ class Player(pygame.sprite.Sprite):
             self.step_cooldown = True
             self.step_timer.activate()
 
+    def _collision(self, axis):
+        for sprite in self.game.collision_sprites:
+            if sprite.rect.colliderect(self.hitbox_rect):
+                if axis == 'horizontal':
+                    if self.direction.x > 0: self.hitbox_rect.right = sprite.rect.left
+                    if self.direction.x < 0: self.hitbox_rect.left  = sprite.rect.right
+                else:
+                    if self.direction.y > 0: self.hitbox_rect.bottom = sprite.rect.top
+                    if self.direction.y < 0: self.hitbox_rect.top    = sprite.rect.bottom
+
     def move(self, dt):
         self.hitbox_rect.x += self.direction.x * self.speed * dt
+        self._collision('horizontal')
         self.hitbox_rect.y += self.direction.y * self.speed * dt
+        self._collision('vertical')
         self.rect.center = self.hitbox_rect.center
 
     def take_damage(self, enemy=None, damage=None):
@@ -165,12 +177,24 @@ class Enemy(AnimatedSprite):
         self.image.set_colorkey('black')
         self.player.game.play_sound('enemy_kill')
 
+    def _collision(self, axis):
+        for sprite in self.player.game.collision_sprites:
+            if sprite.rect.colliderect(self.hitbox_rect):
+                if axis == 'horizontal':
+                    if self.direction.x > 0: self.hitbox_rect.right = sprite.rect.left
+                    if self.direction.x < 0: self.hitbox_rect.left  = sprite.rect.right
+                else:
+                    if self.direction.y > 0: self.hitbox_rect.bottom = sprite.rect.top
+                    if self.direction.y < 0: self.hitbox_rect.top    = sprite.rect.bottom
+
     def move(self, dt):
         direction = pygame.Vector2(self.player.rect.center) - pygame.Vector2(self.rect.center)
         if direction.length() > 0:
             self.direction = direction.normalize()
         self.hitbox_rect.x += self.direction.x * self.speed * dt
+        self._collision('horizontal')
         self.hitbox_rect.y += self.direction.y * self.speed * dt
+        self._collision('vertical')
         self.rect.center = self.hitbox_rect.center
 
     def draw_health(self, surface, offset):
