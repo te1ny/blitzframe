@@ -225,9 +225,13 @@ class Gameplay:
                 and not self.game.enemy_sprites):
             self.ending_wave()
 
-    # K — убить всех врагов (dev tool)
     def input(self):
         keys = pygame.key.get_pressed()
+        prev_esc = getattr(self, '_prev_esc', False)
+        if keys[pygame.K_ESCAPE] and not prev_esc:
+            self.game.change_state('pause', False)
+        self._prev_esc = bool(keys[pygame.K_ESCAPE])
+
         prev_k = getattr(self, '_prev_k', False)
         if keys[pygame.K_k] and not prev_k:
             for sprite in list(self.game.enemy_sprites):
@@ -322,10 +326,16 @@ class Shop(InGameWindow):
     def create_buttons(self):
         cols, rows = 3, 4
         h_margin, v_top, v_bot = 40, 70, 70
-        sp_x, sp_y = 20, 20
+        sp_y = 20
 
-        btn_w = (self.window_rect.width  - 2 * h_margin - (cols - 1) * sp_x) // cols
-        btn_h = (self.window_rect.height - v_top - v_bot  - (rows - 1) * sp_y) // rows
+        # Центры колонок: правая сдвинута влево для визуального баланса
+        avail_w = self.window_rect.width - 2 * h_margin
+        col_centers = [
+            self.window_rect.left + int(h_margin + (c + 0.5) * avail_w / cols)
+            for c in range(cols)
+        ]
+
+        btn_h = (self.window_rect.height - v_top - v_bot - (rows - 1) * sp_y) // rows
 
         self.buttons = [[None] * cols for _ in range(rows)]
 
@@ -333,7 +343,7 @@ class Shop(InGameWindow):
 
         for row in range(rows):
             for col in range(cols):
-                x = self.window_rect.left + h_margin + col * (btn_w + sp_x) + btn_w // 2
+                x = col_centers[col]
                 y = self.window_rect.top  + v_top    + row * (btn_h + sp_y) + btn_h // 2
                 btn = None
 
@@ -519,6 +529,49 @@ class Shop(InGameWindow):
         super().update(dt)
         self.input()
         self.update_gun_buttons_icons()
+
+
+# ===================== Pause =====================
+
+class Pause(InGameWindow):
+    state_name = 'pause'
+    music_state = 'gameplay'
+
+    def __init__(self, game):
+        super().__init__(game, title='Пауза', size=(400, 300))
+
+    def on_enter(self):
+        super().on_enter()
+        self.game.game_paused = True
+
+    def create_buttons(self):
+        cx = self.window_rect.centerx
+        self.resume_button = Button(
+            groups=self.game.buttons_sprites,
+            pos=(cx, self.window_rect.top + self.window_rect.height // 3),
+            image=self.game.buttons_frames['resume']
+        )
+        self.menu_button = Button(
+            groups=self.game.buttons_sprites,
+            pos=(cx, self.window_rect.top + self.window_rect.height // 3 + 100),
+            image=self.game.buttons_frames['menu']
+        )
+
+    def input(self):
+        keys = pygame.key.get_pressed()
+        prev_esc = getattr(self, '_prev_esc', False)
+        just_esc = keys[pygame.K_ESCAPE] and not prev_esc
+        self._prev_esc = bool(keys[pygame.K_ESCAPE])
+
+        if just_esc or self.resume_button.is_clicked():
+            self.game.game_paused = False
+            self.game.change_state('gameplay', False)
+        elif self.menu_button.is_clicked():
+            self.game.reset_game()
+
+    def update(self, dt):
+        super().update(dt)
+        self.input()
 
 
 # ===================== GameOver =====================
