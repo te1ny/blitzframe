@@ -398,7 +398,7 @@ class Shop(InGameWindow):
                     cb = btn.callback
 
                     if cb == 'next_wave':
-                        self.game.change_state('gameplay', animation=False)
+                        self.game.change_state('gameplay')
                         self.game.gameplay.start_wave_timer()
 
                     elif cb == 'heal_player':
@@ -574,6 +574,16 @@ class Pause(InGameWindow):
             self.game.game_paused = False
             self.game.change_state('gameplay', False)
         elif self.menu_button.is_clicked():
+            # Плавное затухание только до чёрного, затем reset (player уже не нужен)
+            clock = pygame.time.Clock()
+            surface = pygame.display.get_surface()
+            overlay = pygame.Surface(surface.get_size()).convert_alpha()
+            for alpha in range(0, 256, 5):
+                self.draw()
+                overlay.fill((0, 0, 0, alpha))
+                surface.blit(overlay, (0, 0))
+                pygame.display.update()
+                clock.tick(60)
             self.game.reset_game()
 
     def update(self, dt):
