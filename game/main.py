@@ -56,6 +56,7 @@ class Game:
             'settings':   states.menu.Settings(self),
             'gameplay':   states.gameplay.Gameplay(self),
             'shop':       states.gameplay.Shop(self),
+            'pause':      states.gameplay.Pause(self),
             'game_over':  states.gameplay.GameOver(self),
         }
 
@@ -112,52 +113,14 @@ class Game:
         boss_frames = folder_importer('images', 'enemies', 'first_boss')
         self.enemies_frames_dict['first_boss'] = {k: scale_frame(v, scale=1.3) for k, v in boss_frames.items()}
 
-        # real button images
+        # button images
         self.buttons_frames = folder_importer('images', 'buttons')
-
-        # placeholder button images for shop (generated programmatically)
-        self._add_placeholder_buttons()
 
         # fonts (SysFont — no TTF file available)
         self.m_font  = pygame.font.SysFont('monospace', 40)
         self.l_font  = pygame.font.SysFont('monospace', 80)
         self.s_font  = pygame.font.SysFont('monospace', 30)
         self.xs_font = pygame.font.SysFont('monospace', 24)
-
-    def _add_placeholder_buttons(self):
-        font_sm = pygame.font.SysFont('monospace', 17)
-        font_md = pygame.font.SysFont('monospace', 20)
-
-        def make(text, color, size=(210, 76), font=None):
-            f = font or font_sm
-            surf = pygame.Surface(size, pygame.SRCALPHA)
-            pygame.draw.rect(surf, (*color, 210), surf.get_rect(), border_radius=10)
-            pygame.draw.rect(surf, (180, 180, 180, 120), surf.get_rect(), 1, border_radius=10)
-            lines = text.split('\n')
-            lh = f.get_height()
-            total_h = lh * len(lines)
-            start_y = (size[1] - total_h) // 2
-            for i, line in enumerate(lines):
-                txt = f.render(line, True, (240, 240, 240))
-                surf.blit(txt, txt.get_rect(centerx=size[0] // 2, top=start_y + i * lh))
-            return surf
-
-        gun_labels = {
-            'pistol':      'Пистолет',
-            'shotgun':     'Дробовик',
-            'sniper':      'Снайперка',
-            'machine-gun': 'Автомат',
-        }
-        for gn, label in gun_labels.items():
-            self.buttons_frames[f'open_{gn}']    = make(label,        (35, 80, 50))
-            self.buttons_frames[f'locked_{gn}']  = make(f'[?] {label}', (55, 55, 55))
-            self.buttons_frames[f'choosen_{gn}'] = make(label,        (140, 110, 15))
-
-        self.buttons_frames['heal']             = make('Лечение\nполностью', (130, 35, 35))
-        self.buttons_frames['health_upgrade']   = make('HP +',        (35, 110, 75), font=font_md)
-        self.buttons_frames['damage_upgrade']   = make('Урон +',      (160, 75, 25), font=font_md)
-        self.buttons_frames['speed_upgrade']    = make('Скорость +',  (25, 75, 155), font=font_md)
-        self.buttons_frames['start_wave']       = make('Далее\n--->',  (20, 115, 55))
 
     def run(self):
         while self.running:
