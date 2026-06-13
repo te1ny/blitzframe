@@ -79,6 +79,8 @@ class Player(pygame.sprite.Sprite):
             state = self.last_state
         frame_list = self.frames[state]
         self.image = frame_list[int(self.frame_index) % len(frame_list)]
+        if getattr(self, 'flipped', False):
+            self.image = pygame.transform.flip(self.image, False, True)
         self.state = state
 
     def input(self):
