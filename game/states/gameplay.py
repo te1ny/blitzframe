@@ -149,13 +149,12 @@ class Gameplay:
         return random.choice(spawners) if spawners else player_pos
 
     def _boss_spawn_pos(self):
-        px, py = self.game.player.rect.center
-        side = random.choice(['top', 'bottom', 'left', 'right'])
-        hw, hh, m = WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2, 300
-        if side == 'top':    return (px, py - hh - m)
-        if side == 'bottom': return (px, py + hh + m)
-        if side == 'left':   return (px - hw - m, py)
-        return (px + hw + m, py)
+        player_pos = self.game.player.rect.center
+        all_spawners = self.game.tilemap.enemy_spawner()
+        if not all_spawners:
+            return self.game.tilemap.boss_spawner()
+        return max(all_spawners, key=lambda pos:
+            (pos[0] - player_pos[0]) ** 2 + (pos[1] - player_pos[1]) ** 2)
 
     def ending_wave(self):
         self.game_stats.wave_active = False
@@ -232,6 +231,34 @@ class Gameplay:
                 and not self.game.enemy_sprites):
             self.ending_wave()
 
+    _CHEAT_CODE = 'sct'
+
+    def on_event(self, event):
+        if event.type == pygame.KEYDOWN and hasattr(self.game, 'player'):
+            char = pygame.key.name(event.key).lower()
+            if len(char) == 1 and char.isalpha():
+                buf = getattr(self, '_cheat_buffer', '')
+                buf = (buf + char)[-len(self._CHEAT_CODE):]
+                self._cheat_buffer = buf
+                if buf == self._CHEAT_CODE:
+                    self._activate_cheat()
+                    self._cheat_buffer = ''
+
+    def _activate_cheat(self):
+        player = self.game.player
+        player.flipped = not getattr(player, 'flipped', False)
+        self.game_stats.money = 9999
+        px, py = player.rect.center
+        for i in range(10):
+            angle = radians(i * 36)
+            pos = (px + cos(angle) * 400, py + sin(angle) * 400)
+            FirstBoss(
+                (self.game.all_sprites, self.game.enemy_sprites),
+                pos,
+                self.game.enemies_frames_dict['first_boss'],
+                player,
+            )
+
     def input(self):
         keys = pygame.key.get_pressed()
         prev_esc = getattr(self, '_prev_esc', False)
@@ -245,6 +272,11 @@ class Gameplay:
                 sprite.kill()
             self.game.enemies_bullet_sprites.empty()
         self._prev_k = bool(keys[pygame.K_k])
+
+        prev_m = getattr(self, '_prev_m', False)
+        if keys[pygame.K_m] and not prev_m:
+            self.game_stats.money = 9999
+        self._prev_m = bool(keys[pygame.K_m])
 
     def update(self, dt):
         self.input()
@@ -637,5 +669,14 @@ class GameOver:
     def update(self, dt):
         self.game.buttons_sprites.update(dt)
         if hasattr(self, 'menu_button') and self.menu_button.is_clicked():
+            clock = pygame.time.Clock()
+            surface = pygame.display.get_surface()
+            overlay = pygame.Surface(surface.get_size()).convert_alpha()
+            for alpha in range(0, 256, 5):
+                self.draw()
+                overlay.fill((0, 0, 0, alpha))
+                surface.blit(overlay, (0, 0))
+                pygame.display.update()
+                clock.tick(60)
             self.game.reset_game()
             return

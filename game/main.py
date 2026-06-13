@@ -108,7 +108,7 @@ class Game:
         self.enemies_frames_dict = {}
         for enemy_type in ['normal', 'fast', 'heavy']:
             frames = folder_importer('images', 'enemies', enemy_type)
-            self.enemies_frames_dict[enemy_type] = {k: scale_frame(v, scale=1.5) for k, v in frames.items()}
+            self.enemies_frames_dict[enemy_type] = {k: scale_frame(v, scale=1.2) for k, v in frames.items()}
 
         boss_frames = folder_importer('images', 'enemies', 'first_boss')
         self.enemies_frames_dict['first_boss'] = {k: scale_frame(v, scale=1.3) for k, v in boss_frames.items()}
@@ -132,6 +132,8 @@ class Game:
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_r:
                         self.reset_game()
+                if hasattr(self.current_state, 'on_event'):
+                    self.current_state.on_event(event)
 
             if not self.game_paused:
                 self.all_sprites.update(dt)
